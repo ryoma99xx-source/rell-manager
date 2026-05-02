@@ -1,1 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>リール糸管理</title>
 
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="リール管理">
+
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 16px;
+  background: #f5f7fb;
+}
+h2 { font-size: 26px; }
+input, textarea, button {
+  font-size: 18px;
+  padding: 12px;
+  width: 100%;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+}
+button {
+  background: #2563eb;
+  color: white;
+  border: none;
+}
+#status {
+  background: white;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+li {
+  list-style: none;
+  background: white;
+  margin: 12px 0;
+  padding: 14px;
+  border-radius: 14px;
+}
+.title { font-size: 20px; font-weight: bold; }
+.row { display: flex; gap: 8px; margin-top: 10px; }
+.row button { flex: 1; }
+.useBtn { background: #10b981; }
+.editBtn { background: #f59e0b; }
+.deleteBtn { background: #ef4444; }
+</style>
+</head>
+
+<body>
+
+<h2>リール糸管理</h2>
+<div id="status">読み込み中...</div>
+
+<input id="name" placeholder="リール名">
+<input id="lineSize" type="number" step="0.1" placeholder="糸の太さ">
+<input id="lineLength" type="number" placeholder="長さ">
+
+<label>巻き替え日</label>
+<input id="spooledAt" type="date">
+
+<label>利用日</label>
+<input id="usedAt" type="date">
+
+<label>使用回数</label>
+<input id="usageCount" type="number" min="0" value="1">
+
+<textarea id="memo" placeholder="メモ"></textarea>
+
+<button onclick="save()">保存</button>
+
+<ul id="list"></ul>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCJJ_w-vBaBw53bzQVjP_ds6P4nxUz97BQ",
+  authDomain: "line-manager-5bec3.firebaseapp.com",
+  projectId: "line-manager-5bec3",
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let reels = [];
+let editingId = null;
+
+async function save() {
+  const data = {
+    name: name.value,
+    lineSize: lineSize.value,
+    lineLength: lineLength.value,
+    spooledAt: spooledAt.value,
+    usedAt: usedAt.value,
+    usageCount: Number(usageCount.value),
+    memo: memo.value
+  };
+
+  if (editingId) {
+    await db.collection("reels").doc(editingId).update(data);
+  } else {
+    await db.collection("reels").add(data);
+  }
+
+  load();
+}
+
+async function load() {
+  const snapshot = await db.collection("reels").get();
+  reels = [];
+  snapshot.forEach(doc => reels.push({ id: doc.id, ...doc.data() }));
+  render();
+  status.innerText = "読み込み完了";
+}
+
+function render() {
+  list.innerHTML = "";
+
+  reels.forEach(d => {
+    list.innerHTML += `
+      <li>
+        <div class="title">${d.name}</div>
+        <div>糸：${d.lineSize}号 / ${d.lineLength}m</div>
+        <div>使用回数：${d.usageCount}</div>
+        <div>${d.memo || ""}</div>
+
+        <div class="row">
+          <button class="useBtn" onclick="add('${d.id}', ${d.usageCount})">+1回</button>
+          <button class="editBtn" onclick="edit('${d.id}')">編集</button>
+          <button class="deleteBtn" onclick="del('${d.id}')">削除</button>
+        </div>
+      </li>
+    `;
+  });
+}
+
+async function add(id, count) {
+  await db.collection("reels").doc(id).update({
+    usageCount: count + 1
+  });
+  load();
+}
+
+function edit(id) {
+  const d = reels.find(r => r.id === id);
+  editingId = id;
+  name.value = d.name;
+  lineSize.value = d.lineSize;
+  lineLength.value = d.lineLength;
+  usageCount.value = d.usageCount;
+  memo.value = d.memo;
+}
+
+async function del(id) {
+  if (!confirm("削除しますか？")) return;
+  await db.collection("reels").doc(id).delete();
+  load();
+}
+
+load();
+</script>
+
+</body>
+</html>
