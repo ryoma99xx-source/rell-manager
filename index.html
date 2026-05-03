@@ -19,10 +19,7 @@ body {
   color: #111827;
 }
 
-h2 {
-  font-size: 30px;
-  margin: 48px 0 18px;
-}
+h2 { font-size: 30px; margin: 48px 0 18px; }
 
 .section {
   border-radius: 18px;
@@ -31,10 +28,7 @@ h2 {
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
-.section h3 {
-  margin: 0 0 10px;
-  font-size: 20px;
-}
+.section h3 { margin: 0 0 10px; font-size: 20px; }
 
 .section-list { background: #eff6ff; }
 .section-cards { background: #ffffff; }
@@ -106,14 +100,8 @@ h2 {
 .type-SP { background: #16a34a; }
 .type-OT { background: #64748b; }
 
-.sort-name {
-  font-weight: bold;
-  font-size: 15px;
-}
-
-.center {
-  text-align: center;
-}
+.sort-name { font-weight: bold; font-size: 15px; }
+.center { text-align: center; }
 
 .flag-cell,
 .memo-mark {
@@ -244,9 +232,7 @@ li.highlight {
   margin-bottom: 14px;
 }
 
-.sub-section h4 {
-  margin: 0 0 10px;
-}
+.sub-section h4 { margin: 0 0 10px; }
 </style>
 </head>
 
@@ -346,6 +332,7 @@ let editingId = null;
 let sortTargetId = null;
 let longPressTimer = null;
 let longPressTriggered = false;
+let normalizedOnce = false;
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -381,6 +368,60 @@ hasSpareSpoolEl.addEventListener("change", function () {
 
 function setStatus(text) {
   statusEl.innerText = text;
+}
+
+function getOrderValue(item) {
+  return typeof item.order === "number" ? item.order : 9999999999999;
+}
+
+function sortReelsStable() {
+  reels.sort((a, b) => {
+    const orderDiff = getOrderValue(a) - getOrderValue(b);
+    if (orderDiff !== 0) return orderDiff;
+
+    const aTime = getTimeValue(a.createdAt) || 0;
+    const bTime = getTimeValue(b.createdAt) || 0;
+    if (aTime !== bTime) return aTime - bTime;
+
+    return String(a.id).localeCompare(String(b.id));
+  });
+}
+
+function getTimeValue(value) {
+  if (!value) return 0;
+  if (value.toMillis) return value.toMillis();
+  if (value.toDate) return value.toDate().getTime();
+  return 0;
+}
+
+function needsNormalize() {
+  const seen = new Set();
+
+  for (const reel of reels) {
+    if (typeof reel.order !== "number") return true;
+    if (seen.has(reel.order)) return true;
+    seen.add(reel.order);
+  }
+
+  return false;
+}
+
+async function normalizeOrderIfNeeded() {
+  if (normalizedOnce) return;
+
+  sortReelsStable();
+
+  if (!needsNormalize()) {
+    normalizedOnce = true;
+    return;
+  }
+
+  setStatus("並び順を整理中...");
+
+  await saveOrder();
+
+  normalizedOnce = true;
+  setStatus("並び順を整理しました");
 }
 
 function clearForm() {
@@ -441,7 +482,7 @@ saveBtn.addEventListener("click", async function () {
       setStatus("更新しました");
     } else {
       data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      data.order = Date.now();
+      data.order = reels.length;
       await db.collection("reels").add(data);
       setStatus("保存しました");
     }
@@ -466,7 +507,9 @@ async function load() {
       reels.push({ id: doc.id, ...doc.data() });
     });
 
-    reels.sort((a, b) => (a.order ?? 9999999999999) - (b.order || 9999999999999));
+    sortReelsStable();
+    await normalizeOrderIfNeeded();
+    sortReelsStable();
 
     renderSummary();
     renderCards();
@@ -650,12 +693,18 @@ async function moveReel(id, direction) {
 }
 
 async function saveOrder() {
+  const batch = db.batch();
+
   for (let i = 0; i < reels.length; i++) {
-    await db.collection("reels").doc(reels[i].id).update({
+    reels[i].order = i;
+    const ref = db.collection("reels").doc(reels[i].id);
+    batch.update(ref, {
       order: i,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   }
+
+  await batch.commit();
 }
 
 async function addUsage(id, type, count) {
