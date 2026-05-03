@@ -36,17 +36,9 @@ h2 {
   font-size: 20px;
 }
 
-.section-list {
-  background: #eff6ff;
-}
-
-.section-cards {
-  background: #ffffff;
-}
-
-.section-form {
-  background: #fffbeb;
-}
+.section-list { background: #eff6ff; }
+.section-cards { background: #ffffff; }
+.section-form { background: #fffbeb; }
 
 #status {
   background: white;
@@ -64,23 +56,21 @@ h2 {
 
 .summary-row {
   display: grid;
-  grid-template-columns: 1.8fr 0.45fr 0.75fr 0.95fr 0.55fr;
+  grid-template-columns: 1.75fr 0.42fr 0.62fr 0.9fr 0.5fr 0.5fr;
   gap: 4px;
   align-items: center;
   padding: 10px 4px;
   border-bottom: 1px solid #eef2f7;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .summary-row.header {
   color: #64748b;
   font-weight: bold;
-  font-size: 12px;
+  font-size: 11px;
 }
 
-.summary-row:last-child {
-  border-bottom: none;
-}
+.summary-row:last-child { border-bottom: none; }
 
 .summary-cell {
   overflow: hidden;
@@ -88,17 +78,12 @@ h2 {
   text-overflow: ellipsis;
 }
 
-.size-cell {
+.center {
   text-align: center;
   font-weight: bold;
 }
 
-.memo-mark {
-  text-align: center;
-  font-weight: bold;
-}
-
-input, textarea, button {
+input, textarea, button, select {
   font-size: 18px;
   padding: 12px;
   width: 100%;
@@ -116,9 +101,7 @@ input[type="date"] {
   appearance: none;
 }
 
-textarea {
-  min-height: 90px;
-}
+textarea { min-height: 90px; }
 
 button {
   background: #2563eb;
@@ -132,9 +115,7 @@ button {
   display: none;
 }
 
-ul {
-  padding: 0;
-}
+ul { padding: 0; }
 
 li {
   list-style: none;
@@ -148,7 +129,21 @@ li {
 .title {
   font-size: 20px;
   font-weight: bold;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+.line-block {
+  background: white;
+  border-radius: 12px;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #e5e7eb;
+}
+
+.line-label {
+  font-weight: bold;
+  color: #2563eb;
+  margin-bottom: 4px;
 }
 
 .memo {
@@ -186,6 +181,18 @@ li {
   font-size: 13px;
   margin: 4px 0 12px;
 }
+
+.sub-section {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.sub-section h4 {
+  margin: 0 0 10px;
+}
 </style>
 </head>
 
@@ -209,17 +216,41 @@ li {
   <h3>新規登録 / 編集</h3>
 
   <input id="name" placeholder="リール名">
+
+  <h4>メインスプール</h4>
   <input id="lineSize" type="number" step="0.1" placeholder="糸の太さ 例：1.2">
   <input id="lineLength" type="number" placeholder="長さ 例：200">
 
   <label>巻き替え日</label>
   <input id="spooledAt" type="date">
 
-  <label>利用日</label>
+  <label>最終利用日</label>
   <input id="usedAt" type="date">
 
   <label>使用回数</label>
   <input id="usageCount" type="number" min="0" value="1">
+
+  <label>替えスプール</label>
+  <select id="hasSpareSpool">
+    <option value="false">なし</option>
+    <option value="true">あり</option>
+  </select>
+
+  <div id="spareFields" class="sub-section" style="display:none;">
+    <h4>替えスプール</h4>
+
+    <input id="spareLineSize" type="number" step="0.1" placeholder="替えスプールの糸の太さ 例：1.5">
+    <input id="spareLineLength" type="number" placeholder="替えスプールの長さ 例：200">
+
+    <label>替えスプール巻き替え日</label>
+    <input id="spareSpooledAt" type="date">
+
+    <label>替えスプール最終利用日</label>
+    <input id="spareUsedAt" type="date">
+
+    <label>替えスプール使用回数</label>
+    <input id="spareUsageCount" type="number" min="0" value="0">
+  </div>
 
   <textarea id="memo" placeholder="メモ"></textarea>
 
@@ -261,6 +292,13 @@ const lineLengthEl = document.getElementById("lineLength");
 const spooledAtEl = document.getElementById("spooledAt");
 const usedAtEl = document.getElementById("usedAt");
 const usageCountEl = document.getElementById("usageCount");
+const hasSpareSpoolEl = document.getElementById("hasSpareSpool");
+const spareFieldsEl = document.getElementById("spareFields");
+const spareLineSizeEl = document.getElementById("spareLineSize");
+const spareLineLengthEl = document.getElementById("spareLineLength");
+const spareSpooledAtEl = document.getElementById("spareSpooledAt");
+const spareUsedAtEl = document.getElementById("spareUsedAt");
+const spareUsageCountEl = document.getElementById("spareUsageCount");
 const memoEl = document.getElementById("memo");
 const saveBtn = document.getElementById("saveBtn");
 const cancelBtn = document.getElementById("cancelBtn");
@@ -269,6 +307,12 @@ const summaryEl = document.getElementById("summary");
 
 spooledAtEl.value = today;
 usedAtEl.value = today;
+spareSpooledAtEl.value = today;
+spareUsedAtEl.value = today;
+
+hasSpareSpoolEl.addEventListener("change", function () {
+  spareFieldsEl.style.display = hasSpareSpoolEl.value === "true" ? "block" : "none";
+});
 
 function setStatus(text) {
   statusEl.innerText = text;
@@ -282,6 +326,13 @@ function clearForm() {
   spooledAtEl.value = today;
   usedAtEl.value = today;
   usageCountEl.value = 1;
+  hasSpareSpoolEl.value = "false";
+  spareFieldsEl.style.display = "none";
+  spareLineSizeEl.value = "";
+  spareLineLengthEl.value = "";
+  spareSpooledAtEl.value = today;
+  spareUsedAtEl.value = today;
+  spareUsageCountEl.value = 0;
   memoEl.value = "";
   saveBtn.innerText = "新規保存";
   cancelBtn.style.display = "none";
@@ -294,6 +345,8 @@ saveBtn.addEventListener("click", async function () {
   try {
     setStatus("保存中...");
 
+    const hasSpare = hasSpareSpoolEl.value === "true";
+
     const data = {
       name: nameEl.value.trim(),
       lineSize: lineSizeEl.value,
@@ -301,6 +354,12 @@ saveBtn.addEventListener("click", async function () {
       spooledAt: spooledAtEl.value,
       usedAt: usedAtEl.value,
       usageCount: Number(usageCountEl.value || 0),
+      hasSpareSpool: hasSpare,
+      spareLineSize: hasSpare ? spareLineSizeEl.value : "",
+      spareLineLength: hasSpare ? spareLineLengthEl.value : "",
+      spareSpooledAt: hasSpare ? spareSpooledAtEl.value : "",
+      spareUsedAt: hasSpare ? spareUsedAtEl.value : "",
+      spareUsageCount: hasSpare ? Number(spareUsageCountEl.value || 0) : 0,
       memo: memoEl.value,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -356,10 +415,11 @@ function renderSummary() {
   summaryEl.innerHTML = `
     <div class="summary-row header">
       <div class="summary-cell">リール</div>
-      <div class="summary-cell size-cell">号</div>
+      <div class="summary-cell center">号</div>
       <div class="summary-cell">長さ</div>
       <div class="summary-cell">巻替日</div>
-      <div class="summary-cell memo-mark">メモ</div>
+      <div class="summary-cell center">替</div>
+      <div class="summary-cell center">メモ</div>
     </div>
   `;
 
@@ -368,11 +428,12 @@ function renderSummary() {
 
     summaryEl.innerHTML += `
       <div class="summary-row">
-        <div class="summary-cell">${escapeHtml(shortName(d.name || "-"))}</div>
-        <div class="summary-cell size-cell">${escapeHtml(d.lineSize || "-")}</div>
-        <div class="summary-cell">${escapeHtml(d.lineLength || "-")}m</div>
+        <div class="summary-cell">${escapeHtml(shortNameByWidth(d.name || "-"))}</div>
+        <div class="summary-cell center">${escapeHtml(d.lineSize || "-")}</div>
+        <div class="summary-cell">${escapeHtml(d.lineLength || "-")}</div>
         <div class="summary-cell">${escapeHtml(formatShortDate(d.spooledAt))}</div>
-        <div class="summary-cell memo-mark">${hasMemo ? "有" : "-"}</div>
+        <div class="summary-cell center">${d.hasSpareSpool ? "有" : "-"}</div>
+        <div class="summary-cell center">${hasMemo ? "有" : "-"}</div>
       </div>
     `;
   });
@@ -383,19 +444,39 @@ function renderCards() {
 
   reels.forEach(d => {
     const count = Number(d.usageCount || 0);
+    const spareCount = Number(d.spareUsageCount || 0);
 
     listEl.innerHTML += `
       <li data-id="${d.id}">
         <div class="drag">☰ 長押しで並び替え</div>
         <div class="title">${escapeHtml(d.name || "")}</div>
-        <div>糸：${escapeHtml(d.lineSize || "-")}号 / ${escapeHtml(d.lineLength || "-")}m</div>
-        <div>巻き替え日：${escapeHtml(d.spooledAt || "-")}</div>
-        <div>最終利用日：${escapeHtml(d.usedAt || "-")}</div>
-        <div>使用回数：${count}回</div>
+
+        <div class="line-block">
+          <div class="line-label">メインスプール</div>
+          <div>糸：${escapeHtml(d.lineSize || "-")}号 / ${escapeHtml(d.lineLength || "-")}m</div>
+          <div>巻き替え日：${escapeHtml(d.spooledAt || "-")}</div>
+          <div>最終利用日：${escapeHtml(d.usedAt || "-")}</div>
+          <div>使用回数：${count}回</div>
+        </div>
+
+        ${d.hasSpareSpool ? `
+          <div class="line-block">
+            <div class="line-label">替えスプール</div>
+            <div>糸：${escapeHtml(d.spareLineSize || "-")}号 / ${escapeHtml(d.spareLineLength || "-")}m</div>
+            <div>巻き替え日：${escapeHtml(d.spareSpooledAt || "-")}</div>
+            <div>最終利用日：${escapeHtml(d.spareUsedAt || "-")}</div>
+            <div>使用回数：${spareCount}回</div>
+          </div>
+        ` : ""}
+
         <div class="memo">${escapeHtml(d.memo || "メモなし")}</div>
 
         <div class="row">
-          <button class="useBtn" onclick="addUsage('${d.id}', ${count})">＋1回</button>
+          <button class="useBtn" onclick="addUsage('${d.id}', 'main', ${count})">メイン＋1回</button>
+          ${d.hasSpareSpool ? `<button class="useBtn" onclick="addUsage('${d.id}', 'spare', ${spareCount})">替＋1回</button>` : ""}
+        </div>
+
+        <div class="row">
           <button class="editBtn" onclick="editReel('${d.id}')">編集</button>
           <button class="deleteBtn" onclick="deleteReel('${d.id}')">削除</button>
         </div>
@@ -406,15 +487,23 @@ function renderCards() {
   setupSort();
 }
 
-async function addUsage(id, count) {
+async function addUsage(id, type, count) {
   try {
     setStatus("使用回数を更新中...");
 
-    await db.collection("reels").doc(id).update({
-      usageCount: Number(count || 0) + 1,
-      usedAt: new Date().toISOString().slice(0, 10),
+    const updateData = {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    };
+
+    if (type === "spare") {
+      updateData.spareUsageCount = Number(count || 0) + 1;
+      updateData.spareUsedAt = new Date().toISOString().slice(0, 10);
+    } else {
+      updateData.usageCount = Number(count || 0) + 1;
+      updateData.usedAt = new Date().toISOString().slice(0, 10);
+    }
+
+    await db.collection("reels").doc(id).update(updateData);
 
     setStatus("使用回数を更新しました");
     await load();
@@ -442,6 +531,16 @@ function editReel(id) {
     spooledAtEl.value = d.spooledAt || today;
     usedAtEl.value = d.usedAt || today;
     usageCountEl.value = Number(d.usageCount || 0);
+
+    hasSpareSpoolEl.value = d.hasSpareSpool ? "true" : "false";
+    spareFieldsEl.style.display = d.hasSpareSpool ? "block" : "none";
+
+    spareLineSizeEl.value = d.spareLineSize || "";
+    spareLineLengthEl.value = d.spareLineLength || "";
+    spareSpooledAtEl.value = d.spareSpooledAt || today;
+    spareUsedAtEl.value = d.spareUsedAt || today;
+    spareUsageCountEl.value = Number(d.spareUsageCount || 0);
+
     memoEl.value = d.memo || "";
 
     saveBtn.innerText = "編集内容を保存";
@@ -504,8 +603,18 @@ function setupSort() {
   });
 }
 
-function shortName(str) {
-  return String(str || "").slice(0, 11);
+function shortNameByWidth(str) {
+  let result = "";
+  let width = 0;
+
+  for (const ch of String(str || "")) {
+    const w = ch.match(/[ -~]/) ? 1 : 2;
+    if (width + w > 11) break;
+    result += ch;
+    width += w;
+  }
+
+  return result;
 }
 
 function formatShortDate(dateStr) {
