@@ -609,7 +609,7 @@ function shortNameByWidth(str) {
 
   for (const ch of String(str || "")) {
     const w = ch.match(/[ -~]/) ? 1 : 2;
-    if (width + w > 11) break;
+    if (width + w > 20) break;
     result += ch;
     width += w;
   }
