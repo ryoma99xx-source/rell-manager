@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>リール糸管理</title>
-<link rel="apple-touch-icon" href="icon.png">
+
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="リール管理">
@@ -18,32 +18,101 @@ body {
   background: #f5f7fb;
   color: #111827;
 }
-h2 { font-size: 26px; margin-bottom: 10px; }
+
+h2 {
+  font-size: 30px;
+  margin: 56px 0 18px;
+}
+
+h3 {
+  margin-top: 28px;
+}
+
 input, textarea, button {
   font-size: 18px;
   padding: 12px;
   width: 100%;
   box-sizing: border-box;
-  margin-bottom: 10px;
-  border-radius: 12px;
+  margin-bottom: 14px;
+  border-radius: 14px;
   border: 1px solid #ddd;
 }
-textarea { min-height: 90px; }
+
+input[type="date"] {
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+textarea {
+  min-height: 90px;
+}
+
 button {
   background: #2563eb;
   color: white;
   border: none;
   font-weight: bold;
 }
-#cancelBtn { background: #64748b; display: none; }
+
+#cancelBtn {
+  background: #64748b;
+  display: none;
+}
+
 #status {
   background: white;
-  padding: 10px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-  font-size: 14px;
+  padding: 12px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  font-size: 16px;
 }
-ul { padding: 0; }
+
+.summary {
+  background: white;
+  border-radius: 16px;
+  padding: 10px;
+  margin: 18px 0 22px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 1.4fr .8fr .8fr .7fr 1fr .6fr;
+  gap: 4px;
+  align-items: center;
+  padding: 9px 4px;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 12px;
+}
+
+.summary-row.header {
+  color: #64748b;
+  font-weight: bold;
+  font-size: 11px;
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-cell {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.memo-mark {
+  text-align: center;
+  font-weight: bold;
+}
+
+ul {
+  padding: 0;
+}
+
 li {
   list-style: none;
   background: white;
@@ -52,7 +121,13 @@ li {
   border-radius: 14px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
-.title { font-size: 20px; font-weight: bold; margin-bottom: 6px; }
+
+.title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
 .memo {
   background: #f1f5f9;
   padding: 10px;
@@ -60,24 +135,29 @@ li {
   margin-top: 8px;
   white-space: pre-wrap;
 }
+
 .row {
   display: flex;
   gap: 8px;
   margin-top: 10px;
 }
+
 .row button {
   flex: 1;
   font-size: 15px;
   padding: 10px;
 }
+
 .useBtn { background: #10b981; }
 .editBtn { background: #f59e0b; }
 .deleteBtn { background: #ef4444; }
+
 .drag {
   color: #94a3b8;
   font-size: 13px;
   margin-bottom: 6px;
 }
+
 .small {
   color: #64748b;
   font-size: 13px;
@@ -108,6 +188,9 @@ li {
 
 <button id="saveBtn">新規保存</button>
 <button id="cancelBtn">編集キャンセル</button>
+
+<h3>一覧</h3>
+<div class="summary" id="summary"></div>
 
 <h3>登録リール</h3>
 <p class="small">カードを長押しして上下にドラッグすると並び替えできます。</p>
@@ -151,6 +234,7 @@ const memoEl = document.getElementById("memo");
 const saveBtn = document.getElementById("saveBtn");
 const cancelBtn = document.getElementById("cancelBtn");
 const listEl = document.getElementById("list");
+const summaryEl = document.getElementById("summary");
 
 spooledAtEl.value = today;
 usedAtEl.value = today;
@@ -228,12 +312,41 @@ async function load() {
     reels.sort((a, b) => (a.order || 9999999999999) - (b.order || 9999999999999));
 
     render();
+    renderSummary();
     setStatus("読み込み完了");
 
   } catch (e) {
     setStatus("読み込みエラー：" + e.message);
     console.error(e);
   }
+}
+
+function renderSummary() {
+  summaryEl.innerHTML = `
+    <div class="summary-row header">
+      <div class="summary-cell">リール</div>
+      <div class="summary-cell">号</div>
+      <div class="summary-cell">長さ</div>
+      <div class="summary-cell">回</div>
+      <div class="summary-cell">利用日</div>
+      <div class="summary-cell memo-mark">メモ</div>
+    </div>
+  `;
+
+  reels.forEach(d => {
+    const hasMemo = d.memo && d.memo.trim().length > 0;
+
+    summaryEl.innerHTML += `
+      <div class="summary-row">
+        <div class="summary-cell">${escapeHtml(d.name || "-")}</div>
+        <div class="summary-cell">${escapeHtml(d.lineSize || "-")}</div>
+        <div class="summary-cell">${escapeHtml(d.lineLength || "-")}m</div>
+        <div class="summary-cell">${Number(d.usageCount || 0)}</div>
+        <div class="summary-cell">${escapeHtml(d.usedAt || "-")}</div>
+        <div class="summary-cell memo-mark">${hasMemo ? "有" : "-"}</div>
+      </div>
+    `;
+  });
 }
 
 function render() {
