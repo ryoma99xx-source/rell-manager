@@ -859,60 +859,51 @@ window.startLongPress = startLongPress;
 window.cancelLongPress = cancelLongPress;
 window.handleSummaryTap = handleSummaryTap;
 window.moveReel = moveReel;
-document.getElementById("csvBackupBtn").addEventListener("click", exportCsv);
 
 function exportCsv() {
-  const headers = [
-    "リール名",
-    "種類",
-    "メイン号数",
-    "メイン長さ",
-    "メイン巻替日",
-    "メイン最終利用日",
-    "メイン使用回数",
-    "替スプール有無",
-    "替号数",
-    "替長さ",
-    "替巻替日",
-    "替最終利用日",
-    "替使用回数",
-    "メモ"
-  ];
+  try {
+    if (!reels || reels.length === 0) {
+      setStatus("バックアップ対象のデータがありません");
+      return;
+    }
 
-  const rows = reels.map(r => [
-    r.name || "",
-    r.reelType || "",
-    r.lineSize || "",
-    r.lineLength || "",
-    r.spooledAt || "",
-    r.usedAt || "",
-    r.usageCount ?? "",
-    r.hasSpareSpool ? "あり" : "なし",
-    r.spareLineSize || "",
-    r.spareLineLength || "",
-    r.spareSpooledAt || "",
-    r.spareUsedAt || "",
-    r.spareUsageCount ?? "",
-    r.memo || ""
-  ]);
+    const headers = [
+      "リール名","種類","メイン号数","メイン長さ","メイン巻替日","メイン最終利用日","メイン使用回数",
+      "替スプール有無","替号数","替長さ","替巻替日","替最終利用日","替使用回数","メモ"
+    ];
 
-  const csv = [headers, ...rows]
-    .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(","))
-    .join("\n");
+    const rows = reels.map(r => [
+      r.name || "", r.reelType || "", r.lineSize || "", r.lineLength || "",
+      r.spooledAt || "", r.usedAt || "", r.usageCount ?? "",
+      r.hasSpareSpool ? "あり" : "なし",
+      r.spareLineSize || "", r.spareLineLength || "", r.spareSpooledAt || "",
+      r.spareUsedAt || "", r.spareUsageCount ?? "", r.memo || ""
+    ]);
 
-  const bom = "\uFEFF";
-  const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
+    const csv = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
 
-  const date = new Date().toISOString().slice(0, 10);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `reel-backup-${date}.csv`;
-  a.click();
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const date = new Date().toISOString().slice(0, 10);
 
-  URL.revokeObjectURL(url);
-  setStatus("CSVバックアップを出力しました");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reel-backup-${date}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+    setStatus("CSVバックアップを出力しました");
+  } catch (e) {
+    setStatus("CSV出力エラー：" + e.message);
+  }
 }
+
+document.getElementById("csvBackupBtn").addEventListener("click", exportCsv);
+
 load();
 </script>
 
