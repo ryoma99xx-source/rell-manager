@@ -466,7 +466,7 @@ async function load() {
       reels.push({ id: doc.id, ...doc.data() });
     });
 
-    reels.sort((a, b) => (a.order || 9999999999999) - (b.order || 9999999999999));
+    reels.sort((a, b) => (a.order ?? 9999999999999) - (b.order || 9999999999999));
 
     renderSummary();
     renderCards();
