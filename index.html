@@ -8,46 +8,81 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="リール管理">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
 
 <style>
 body {
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
   padding: 16px;
   background: #f5f7fb;
+  color: #111827;
 }
-h2 { font-size: 26px; }
+h2 { font-size: 26px; margin-bottom: 10px; }
 input, textarea, button {
   font-size: 18px;
   padding: 12px;
   width: 100%;
+  box-sizing: border-box;
   margin-bottom: 10px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid #ddd;
 }
+textarea { min-height: 90px; }
 button {
   background: #2563eb;
   color: white;
   border: none;
+  font-weight: bold;
 }
+#cancelBtn { background: #64748b; display: none; }
 #status {
   background: white;
   padding: 10px;
   border-radius: 10px;
   margin-bottom: 12px;
+  font-size: 14px;
 }
+ul { padding: 0; }
 li {
   list-style: none;
   background: white;
   margin: 12px 0;
   padding: 14px;
   border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
 }
-.title { font-size: 20px; font-weight: bold; }
-.row { display: flex; gap: 8px; margin-top: 10px; }
-.row button { flex: 1; }
+.title { font-size: 20px; font-weight: bold; margin-bottom: 6px; }
+.memo {
+  background: #f1f5f9;
+  padding: 10px;
+  border-radius: 10px;
+  margin-top: 8px;
+  white-space: pre-wrap;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.row button {
+  flex: 1;
+  font-size: 15px;
+  padding: 10px;
+}
 .useBtn { background: #10b981; }
 .editBtn { background: #f59e0b; }
 .deleteBtn { background: #ef4444; }
+.drag {
+  color: #94a3b8;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.small {
+  color: #64748b;
+  font-size: 13px;
+  margin-top: 4px;
+}
 </style>
 </head>
 
@@ -57,8 +92,8 @@ li {
 <div id="status">読み込み中...</div>
 
 <input id="name" placeholder="リール名">
-<input id="lineSize" type="number" step="0.1" placeholder="糸の太さ">
-<input id="lineLength" type="number" placeholder="長さ">
+<input id="lineSize" type="number" step="0.1" placeholder="糸の太さ 例：1.2">
+<input id="lineLength" type="number" placeholder="長さ 例：200">
 
 <label>巻き替え日</label>
 <input id="spooledAt" type="date">
@@ -71,97 +106,274 @@ li {
 
 <textarea id="memo" placeholder="メモ"></textarea>
 
-<button onclick="save()">保存</button>
+<button id="saveBtn">新規保存</button>
+<button id="cancelBtn">編集キャンセル</button>
 
+<h3>登録リール</h3>
+<p class="small">カードを長押しして上下にドラッグすると並び替えできます。</p>
 <ul id="list"></ul>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyCJJ_w-vBaBw53bzQVjP_ds6P4nxUz97BQ",
   authDomain: "line-manager-5bec3.firebaseapp.com",
   projectId: "line-manager-5bec3",
+  storageBucket: "line-manager-5bec3.firebasestorage.app",
+  messagingSenderId: "278359562354",
+  appId: "1:278359562354:web:b873faf23cf102406b8aeb"
 };
 
 firebase.initializeApp(firebaseConfig);
+
 const db = firebase.firestore();
+db.settings({
+  experimentalForceLongPolling: true,
+  useFetchStreams: false
+});
 
 let reels = [];
 let editingId = null;
 
-async function save() {
-  const data = {
-    name: name.value,
-    lineSize: lineSize.value,
-    lineLength: lineLength.value,
-    spooledAt: spooledAt.value,
-    usedAt: usedAt.value,
-    usageCount: Number(usageCount.value),
-    memo: memo.value
-  };
+const today = new Date().toISOString().slice(0, 10);
 
-  if (editingId) {
-    await db.collection("reels").doc(editingId).update(data);
-  } else {
-    await db.collection("reels").add(data);
-  }
+const statusEl = document.getElementById("status");
+const nameEl = document.getElementById("name");
+const lineSizeEl = document.getElementById("lineSize");
+const lineLengthEl = document.getElementById("lineLength");
+const spooledAtEl = document.getElementById("spooledAt");
+const usedAtEl = document.getElementById("usedAt");
+const usageCountEl = document.getElementById("usageCount");
+const memoEl = document.getElementById("memo");
+const saveBtn = document.getElementById("saveBtn");
+const cancelBtn = document.getElementById("cancelBtn");
+const listEl = document.getElementById("list");
 
-  load();
+spooledAtEl.value = today;
+usedAtEl.value = today;
+
+function setStatus(text) {
+  statusEl.innerText = text;
 }
 
+function clearForm() {
+  editingId = null;
+  nameEl.value = "";
+  lineSizeEl.value = "";
+  lineLengthEl.value = "";
+  spooledAtEl.value = today;
+  usedAtEl.value = today;
+  usageCountEl.value = 1;
+  memoEl.value = "";
+  saveBtn.innerText = "新規保存";
+  cancelBtn.style.display = "none";
+  setStatus("入力待ち");
+}
+
+cancelBtn.addEventListener("click", clearForm);
+
+saveBtn.addEventListener("click", async function () {
+  try {
+    setStatus("保存中...");
+
+    const data = {
+      name: nameEl.value.trim(),
+      lineSize: lineSizeEl.value,
+      lineLength: lineLengthEl.value,
+      spooledAt: spooledAtEl.value,
+      usedAt: usedAtEl.value,
+      usageCount: Number(usageCountEl.value || 0),
+      memo: memoEl.value,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!data.name) {
+      setStatus("リール名を入力してください");
+      return;
+    }
+
+    if (editingId) {
+      await db.collection("reels").doc(editingId).update(data);
+      setStatus("更新しました");
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      data.order = Date.now();
+      await db.collection("reels").add(data);
+      setStatus("保存しました");
+    }
+
+    clearForm();
+    await load();
+
+  } catch (e) {
+    setStatus("保存エラー：" + e.message);
+    console.error(e);
+  }
+});
+
 async function load() {
-  const snapshot = await db.collection("reels").get();
-  reels = [];
-  snapshot.forEach(doc => reels.push({ id: doc.id, ...doc.data() }));
-  render();
-  status.innerText = "読み込み完了";
+  try {
+    setStatus("読み込み中...");
+
+    const snapshot = await db.collection("reels").get();
+
+    reels = [];
+    snapshot.forEach(doc => {
+      reels.push({ id: doc.id, ...doc.data() });
+    });
+
+    reels.sort((a, b) => (a.order || 9999999999999) - (b.order || 9999999999999));
+
+    render();
+    setStatus("読み込み完了");
+
+  } catch (e) {
+    setStatus("読み込みエラー：" + e.message);
+    console.error(e);
+  }
 }
 
 function render() {
-  list.innerHTML = "";
+  listEl.innerHTML = "";
 
   reels.forEach(d => {
-    list.innerHTML += `
-      <li>
-        <div class="title">${d.name}</div>
-        <div>糸：${d.lineSize}号 / ${d.lineLength}m</div>
-        <div>使用回数：${d.usageCount}</div>
-        <div>${d.memo || ""}</div>
+    const count = Number(d.usageCount || 0);
+
+    listEl.innerHTML += `
+      <li data-id="${d.id}">
+        <div class="drag">☰ 長押しで並び替え</div>
+        <div class="title">${escapeHtml(d.name || "")}</div>
+        <div>糸：${escapeHtml(d.lineSize || "-")}号 / ${escapeHtml(d.lineLength || "-")}m</div>
+        <div>巻き替え日：${escapeHtml(d.spooledAt || "-")}</div>
+        <div>最終利用日：${escapeHtml(d.usedAt || "-")}</div>
+        <div>使用回数：${count}回</div>
+        <div class="memo">${escapeHtml(d.memo || "メモなし")}</div>
 
         <div class="row">
-          <button class="useBtn" onclick="add('${d.id}', ${d.usageCount})">+1回</button>
-          <button class="editBtn" onclick="edit('${d.id}')">編集</button>
-          <button class="deleteBtn" onclick="del('${d.id}')">削除</button>
+          <button class="useBtn" onclick="addUsage('${d.id}', ${count})">＋1回</button>
+          <button class="editBtn" onclick="editReel('${d.id}')">編集</button>
+          <button class="deleteBtn" onclick="deleteReel('${d.id}')">削除</button>
         </div>
       </li>
     `;
   });
+
+  setupSort();
 }
 
-async function add(id, count) {
-  await db.collection("reels").doc(id).update({
-    usageCount: count + 1
+async function addUsage(id, count) {
+  try {
+    setStatus("使用回数を更新中...");
+
+    await db.collection("reels").doc(id).update({
+      usageCount: Number(count || 0) + 1,
+      usedAt: new Date().toISOString().slice(0, 10),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    setStatus("使用回数を更新しました");
+    await load();
+
+  } catch (e) {
+    setStatus("使用回数更新エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+function editReel(id) {
+  try {
+    const d = reels.find(x => x.id === id);
+
+    if (!d) {
+      setStatus("編集対象が見つかりません");
+      return;
+    }
+
+    editingId = id;
+
+    nameEl.value = d.name || "";
+    lineSizeEl.value = d.lineSize || "";
+    lineLengthEl.value = d.lineLength || "";
+    spooledAtEl.value = d.spooledAt || today;
+    usedAtEl.value = d.usedAt || today;
+    usageCountEl.value = Number(d.usageCount || 0);
+    memoEl.value = d.memo || "";
+
+    saveBtn.innerText = "編集内容を保存";
+    cancelBtn.style.display = "block";
+
+    setStatus("編集中：" + (d.name || ""));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+  } catch (e) {
+    setStatus("編集エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+async function deleteReel(id) {
+  try {
+    if (!confirm("このリールを丸ごと削除しますか？")) return;
+
+    setStatus("削除中...");
+    await db.collection("reels").doc(id).delete();
+
+    setStatus("削除しました");
+    await load();
+
+  } catch (e) {
+    setStatus("削除エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+function setupSort() {
+  new Sortable(listEl, {
+    animation: 150,
+    delay: 250,
+    delayOnTouchOnly: true,
+    onEnd: async function () {
+      try {
+        setStatus("並び順を保存中...");
+
+        const ids = Array.from(listEl.children).map(li => li.dataset.id);
+
+        for (let i = 0; i < ids.length; i++) {
+          await db.collection("reels").doc(ids[i]).update({
+            order: i,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+
+        setStatus("並び順を保存しました");
+        await load();
+
+      } catch (e) {
+        setStatus("並び替えエラー：" + e.message);
+        console.error(e);
+      }
+    }
   });
-  load();
 }
 
-function edit(id) {
-  const d = reels.find(r => r.id === id);
-  editingId = id;
-  name.value = d.name;
-  lineSize.value = d.lineSize;
-  lineLength.value = d.lineLength;
-  usageCount.value = d.usageCount;
-  memo.value = d.memo;
+function escapeHtml(str) {
+  return String(str).replace(/[&<>'"]/g, function(c) {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;"
+    }[c];
+  });
 }
 
-async function del(id) {
-  if (!confirm("削除しますか？")) return;
-  await db.collection("reels").doc(id).delete();
-  load();
-}
+window.addUsage = addUsage;
+window.editReel = editReel;
+window.deleteReel = deleteReel;
 
 load();
 </script>
