@@ -56,7 +56,7 @@ h2 {
 
 .summary-row {
   display: grid;
-  grid-template-columns: 1.75fr 0.42fr 0.62fr 0.9fr 0.5fr 0.5fr;
+  grid-template-columns: 1.95fr 0.42fr 0.62fr 0.9fr 0.5fr 0.5fr;
   gap: 4px;
   align-items: center;
   padding: 10px 4px;
@@ -78,7 +78,19 @@ h2 {
   text-overflow: ellipsis;
 }
 
+.summary-link {
+  color: #111827;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
 .center {
+  text-align: center;
+}
+
+.flag-cell,
+.memo-mark {
   text-align: center;
   font-weight: bold;
 }
@@ -124,6 +136,12 @@ li {
   padding: 14px;
   border-radius: 14px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+
+li.highlight {
+  background: #dbeafe;
+  transform: scale(1.01);
 }
 
 .title {
@@ -418,8 +436,8 @@ function renderSummary() {
       <div class="summary-cell center">号</div>
       <div class="summary-cell">長さ</div>
       <div class="summary-cell">巻替日</div>
-      <div class="summary-cell center">替</div>
-      <div class="summary-cell center">メモ</div>
+      <div class="summary-cell flag-cell">替</div>
+      <div class="summary-cell memo-mark">メモ</div>
     </div>
   `;
 
@@ -428,12 +446,12 @@ function renderSummary() {
 
     summaryEl.innerHTML += `
       <div class="summary-row">
-        <div class="summary-cell">${escapeHtml(shortNameByWidth(d.name || "-"))}</div>
+        <div class="summary-cell summary-link" onclick="scrollToReel('${d.id}')">${escapeHtml(shortNameByWidth(d.name || "-"))}</div>
         <div class="summary-cell center">${escapeHtml(d.lineSize || "-")}</div>
         <div class="summary-cell">${escapeHtml(d.lineLength || "-")}</div>
         <div class="summary-cell">${escapeHtml(formatShortDate(d.spooledAt))}</div>
-        <div class="summary-cell center">${d.hasSpareSpool ? "有" : "-"}</div>
-        <div class="summary-cell center">${hasMemo ? "有" : "-"}</div>
+        <div class="summary-cell flag-cell">${d.hasSpareSpool ? "有" : "-"}</div>
+        <div class="summary-cell memo-mark">${hasMemo ? "有" : "-"}</div>
       </div>
     `;
   });
@@ -447,7 +465,7 @@ function renderCards() {
     const spareCount = Number(d.spareUsageCount || 0);
 
     listEl.innerHTML += `
-      <li data-id="${d.id}">
+      <li data-id="${d.id}" id="card-${d.id}">
         <div class="drag">☰ 長押しで並び替え</div>
         <div class="title">${escapeHtml(d.name || "")}</div>
 
@@ -603,6 +621,22 @@ function setupSort() {
   });
 }
 
+function scrollToReel(id) {
+  const el = document.getElementById("card-" + id);
+  if (!el) return;
+
+  el.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+
+  el.classList.add("highlight");
+
+  setTimeout(() => {
+    el.classList.remove("highlight");
+  }, 1000);
+}
+
 function shortNameByWidth(str) {
   let result = "";
   let width = 0;
@@ -645,6 +679,7 @@ function escapeHtml(str) {
 window.addUsage = addUsage;
 window.editReel = editReel;
 window.deleteReel = deleteReel;
+window.scrollToReel = scrollToReel;
 
 load();
 </script>
