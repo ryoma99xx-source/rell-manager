@@ -56,7 +56,7 @@ h2 {
 
 .summary-row {
   display: grid;
-  grid-template-columns: 1.95fr 0.42fr 0.62fr 0.9fr 0.5fr 0.5fr;
+  grid-template-columns: 1.9fr 0.42fr 0.62fr 0.9fr 0.5fr 0.5fr 0.75fr;
   gap: 4px;
   align-items: center;
   padding: 10px 4px;
@@ -70,16 +70,10 @@ h2 {
   font-size: 11px;
 }
 
-.summary-row.item {
-  cursor: grab;
-}
-
-.summary-row.item:active {
-  cursor: grabbing;
+.summary-row.active-sort {
   background: #dbeafe;
+  border-radius: 10px;
 }
-
-.summary-row:last-child { border-bottom: none; }
 
 .summary-cell {
   overflow: hidden;
@@ -101,6 +95,27 @@ h2 {
 .memo-mark {
   text-align: center;
   font-weight: bold;
+}
+
+.sort-buttons {
+  display: flex;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.sort-buttons button {
+  width: auto;
+  padding: 6px 8px;
+  margin: 0;
+  font-size: 13px;
+  border-radius: 8px;
+  background: #2563eb;
+}
+
+.sort-placeholder {
+  text-align: right;
+  color: #94a3b8;
+  font-size: 12px;
 }
 
 input, textarea, button, select {
@@ -223,13 +238,12 @@ li.highlight {
 
 <section class="section section-list">
   <h3>登録リール一覧</h3>
-  <p class="small">一覧の行を長押しして上下にドラッグすると並び替えできます。</p>
+  <p class="small">リール名タップで詳細へ移動。行を長押しすると、その行だけ並び替えボタンが出ます。</p>
   <div class="summary" id="summary"></div>
 </section>
 
 <section class="section section-cards">
   <h3>登録リール</h3>
-  <p class="small">リール名は一覧からタップすると該当カードへ移動できます。</p>
   <ul id="list"></ul>
 </section>
 
@@ -281,7 +295,6 @@ li.highlight {
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
 <script>
 const firebaseConfig = {
@@ -303,6 +316,9 @@ db.settings({
 
 let reels = [];
 let editingId = null;
+let sortTargetId = null;
+let longPressTimer = null;
+let longPressTriggered = false;
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -441,25 +457,41 @@ function renderSummary() {
       <div class="summary-cell">巻替日</div>
       <div class="summary-cell flag-cell">替</div>
       <div class="summary-cell memo-mark">メモ</div>
+      <div class="summary-cell center">移動</div>
     </div>
   `;
 
-  reels.forEach(d => {
+  reels.forEach((d, index) => {
     const hasMemo = d.memo && d.memo.trim().length > 0;
+    const isActive = sortTargetId === d.id;
 
     summaryEl.innerHTML += `
-      <div class="summary-row item" data-id="${d.id}">
-        <div class="summary-cell summary-link" onclick="scrollToReel('${d.id}')">${escapeHtml(shortNameByWidth(d.name || "-"))}</div>
+      <div class="summary-row item ${isActive ? "active-sort" : ""}"
+        data-id="${d.id}"
+        ontouchstart="startLongPress('${d.id}')"
+        ontouchend="cancelLongPress()"
+        ontouchmove="cancelLongPress()"
+        onmousedown="startLongPress('${d.id}')"
+        onmouseup="cancelLongPress()"
+        onmouseleave="cancelLongPress()"
+      >
+        <div class="summary-cell summary-link" onclick="handleSummaryTap('${d.id}')">${escapeHtml(shortNameByWidth(d.name || "-"))}</div>
         <div class="summary-cell center">${escapeHtml(d.lineSize || "-")}</div>
         <div class="summary-cell">${escapeHtml(d.lineLength || "-")}</div>
         <div class="summary-cell">${escapeHtml(formatShortDate(d.spooledAt))}</div>
         <div class="summary-cell flag-cell">${d.hasSpareSpool ? "有" : "-"}</div>
         <div class="summary-cell memo-mark">${hasMemo ? "有" : "-"}</div>
+        <div class="summary-cell">
+          ${isActive ? `
+            <div class="sort-buttons">
+              <button onclick="moveReel('${d.id}', -1)" ${index === 0 ? "disabled" : ""}>↑</button>
+              <button onclick="moveReel('${d.id}', 1)" ${index === reels.length - 1 ? "disabled" : ""}>↓</button>
+            </div>
+          ` : `<div class="sort-placeholder">長押し</div>`}
+        </div>
       </div>
     `;
   });
-
-  setupSummarySort();
 }
 
 function renderCards() {
@@ -505,6 +537,68 @@ function renderCards() {
       </li>
     `;
   });
+}
+
+function startLongPress(id) {
+  longPressTriggered = false;
+
+  longPressTimer = setTimeout(() => {
+    longPressTriggered = true;
+    sortTargetId = id;
+    setStatus("並び替え対象を選択しました");
+    renderSummary();
+  }, 600);
+}
+
+function cancelLongPress() {
+  clearTimeout(longPressTimer);
+}
+
+function handleSummaryTap(id) {
+  if (longPressTriggered) {
+    longPressTriggered = false;
+    return;
+  }
+
+  if (sortTargetId === id) return;
+
+  scrollToReel(id);
+}
+
+async function moveReel(id, direction) {
+  try {
+    const index = reels.findIndex(r => r.id === id);
+    const targetIndex = index + direction;
+
+    if (index < 0 || targetIndex < 0 || targetIndex >= reels.length) return;
+
+    const temp = reels[index];
+    reels[index] = reels[targetIndex];
+    reels[targetIndex] = temp;
+
+    setStatus("並び順を保存中...");
+
+    await saveOrder();
+
+    sortTargetId = id;
+    renderSummary();
+    renderCards();
+
+    setStatus("並び順を保存しました");
+
+  } catch (e) {
+    setStatus("並び替えエラー：" + e.message);
+    console.error(e);
+  }
+}
+
+async function saveOrder() {
+  for (let i = 0; i < reels.length; i++) {
+    await db.collection("reels").doc(reels[i].id).update({
+      order: i,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
 }
 
 async function addUsage(id, type, count) {
@@ -594,38 +688,6 @@ async function deleteReel(id) {
   }
 }
 
-function setupSummarySort() {
-  new Sortable(summaryEl, {
-    animation: 150,
-    delay: 250,
-    delayOnTouchOnly: true,
-    draggable: ".summary-row.item",
-    filter: ".header",
-    onEnd: async function () {
-      try {
-        setStatus("並び順を保存中...");
-
-        const ids = Array.from(summaryEl.querySelectorAll(".summary-row.item"))
-          .map(row => row.dataset.id);
-
-        for (let i = 0; i < ids.length; i++) {
-          await db.collection("reels").doc(ids[i]).update({
-            order: i,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        }
-
-        setStatus("並び順を保存しました");
-        await load();
-
-      } catch (e) {
-        setStatus("並び替えエラー：" + e.message);
-        console.error(e);
-      }
-    }
-  });
-}
-
 function scrollToReel(id) {
   const el = document.getElementById("card-" + id);
   if (!el) return;
@@ -685,6 +747,10 @@ window.addUsage = addUsage;
 window.editReel = editReel;
 window.deleteReel = deleteReel;
 window.scrollToReel = scrollToReel;
+window.startLongPress = startLongPress;
+window.cancelLongPress = cancelLongPress;
+window.handleSummaryTap = handleSummaryTap;
+window.moveReel = moveReel;
 
 load();
 </script>
