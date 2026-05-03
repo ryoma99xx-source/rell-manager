@@ -56,7 +56,7 @@ h2 {
 
 .summary-row {
   display: grid;
-  grid-template-columns: 1.85fr 0.42fr 0.6fr 0.85fr 0.45fr 0.45fr 0.72fr;
+  grid-template-columns: 1.95fr 0.42fr 0.62fr 0.9fr 0.5fr 0.5fr;
   gap: 4px;
   align-items: center;
   padding: 10px 4px;
@@ -70,11 +70,12 @@ h2 {
   font-size: 11px;
 }
 
-.summary-row.active-sort {
+.summary-row.sorting {
+  grid-template-columns: 1fr 44px 44px;
   background: #dbeafe;
   border-radius: 10px;
-  padding-top: 8px;
-  padding-bottom: 8px;
+  padding: 10px 8px;
+  margin: 4px 0;
 }
 
 .summary-cell {
@@ -89,6 +90,11 @@ h2 {
   text-underline-offset: 3px;
 }
 
+.sort-name {
+  font-weight: bold;
+  font-size: 15px;
+}
+
 .center {
   text-align: center;
 }
@@ -99,33 +105,20 @@ h2 {
   font-weight: bold;
 }
 
-.sort-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: stretch;
-  justify-content: center;
-}
-
-.sort-buttons button {
-  width: 100%;
-  padding: 5px 0;
+.sort-btn {
+  width: 40px;
+  height: 36px;
+  padding: 0;
   margin: 0;
-  font-size: 14px;
+  border-radius: 10px;
+  font-size: 20px;
   line-height: 1;
-  border-radius: 8px;
   background: #2563eb;
 }
 
-.sort-buttons button:disabled {
+.sort-btn:disabled {
   background: #cbd5e1;
   color: #64748b;
-}
-
-.sort-placeholder {
-  text-align: center;
-  color: #94a3b8;
-  font-size: 12px;
 }
 
 input, textarea, button, select {
@@ -248,7 +241,7 @@ li.highlight {
 
 <section class="section section-list">
   <h3>登録リール一覧</h3>
-  <p class="small">リール名タップで詳細へ移動。行を長押しすると、その行だけ並び替えボタンが出ます。</p>
+  <p class="small">リール名タップで詳細へ移動。行を長押しすると、その行だけ並び替えできます。同じ行を再度長押しで解除。</p>
   <div class="summary" id="summary"></div>
 </section>
 
@@ -467,7 +460,6 @@ function renderSummary() {
       <div class="summary-cell">巻替日</div>
       <div class="summary-cell flag-cell">替</div>
       <div class="summary-cell memo-mark">メモ</div>
-      <div class="summary-cell center">移動</div>
     </div>
   `;
 
@@ -475,8 +467,27 @@ function renderSummary() {
     const hasMemo = d.memo && d.memo.trim().length > 0;
     const isActive = sortTargetId === d.id;
 
+    if (isActive) {
+      summaryEl.innerHTML += `
+        <div class="summary-row sorting"
+          data-id="${d.id}"
+          ontouchstart="startLongPress('${d.id}')"
+          ontouchend="cancelLongPress()"
+          ontouchmove="cancelLongPress()"
+          onmousedown="startLongPress('${d.id}')"
+          onmouseup="cancelLongPress()"
+          onmouseleave="cancelLongPress()"
+        >
+          <div class="summary-cell sort-name">${escapeHtml(shortNameByWidth(d.name || "-"))}</div>
+          <button class="sort-btn" onclick="moveReel('${d.id}', -1)" ${index === 0 ? "disabled" : ""}>↑</button>
+          <button class="sort-btn" onclick="moveReel('${d.id}', 1)" ${index === reels.length - 1 ? "disabled" : ""}>↓</button>
+        </div>
+      `;
+      return;
+    }
+
     summaryEl.innerHTML += `
-      <div class="summary-row item ${isActive ? "active-sort" : ""}"
+      <div class="summary-row item"
         data-id="${d.id}"
         ontouchstart="startLongPress('${d.id}')"
         ontouchend="cancelLongPress()"
@@ -491,14 +502,6 @@ function renderSummary() {
         <div class="summary-cell">${escapeHtml(formatShortDate(d.spooledAt))}</div>
         <div class="summary-cell flag-cell">${d.hasSpareSpool ? "有" : "-"}</div>
         <div class="summary-cell memo-mark">${hasMemo ? "有" : "-"}</div>
-        <div class="summary-cell">
-          ${isActive ? `
-            <div class="sort-buttons">
-              <button onclick="moveReel('${d.id}', -1)" ${index === 0 ? "disabled" : ""}>↑</button>
-              <button onclick="moveReel('${d.id}', 1)" ${index === reels.length - 1 ? "disabled" : ""}>↓</button>
-            </div>
-          ` : `<div class="sort-placeholder">長押し</div>`}
-        </div>
       </div>
     `;
   });
@@ -554,8 +557,15 @@ function startLongPress(id) {
 
   longPressTimer = setTimeout(() => {
     longPressTriggered = true;
-    sortTargetId = id;
-    setStatus("並び替え対象を選択しました");
+
+    if (sortTargetId === id) {
+      sortTargetId = null;
+      setStatus("並び替え選択を解除しました");
+    } else {
+      sortTargetId = id;
+      setStatus("並び替え対象を選択しました");
+    }
+
     renderSummary();
   }, 600);
 }
