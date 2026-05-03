@@ -56,7 +56,7 @@ h2 {
 
 .summary-row {
   display: grid;
-  grid-template-columns: 1.95fr 0.42fr 0.62fr 0.9fr 0.5fr 0.5fr;
+  grid-template-columns: 0.48fr 1.95fr 0.42fr 0.62fr 0.9fr 0.5fr 0.5fr;
   gap: 4px;
   align-items: center;
   padding: 10px 4px;
@@ -89,6 +89,22 @@ h2 {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+.type-badge {
+  display: inline-block;
+  min-width: 30px;
+  padding: 3px 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  color: white;
+}
+
+.type-EL { background: #2563eb; }
+.type-BC { background: #f97316; }
+.type-SP { background: #16a34a; }
+.type-OT { background: #64748b; }
 
 .sort-name {
   font-weight: bold;
@@ -255,6 +271,14 @@ li.highlight {
 
   <input id="name" placeholder="リール名">
 
+  <label>リール種類</label>
+  <select id="reelType">
+    <option value="EL">電動 / EL</option>
+    <option value="BC">両軸 / BC</option>
+    <option value="SP">スピニング / SP</option>
+    <option value="OT">その他 / OT</option>
+  </select>
+
   <h4>メインスプール</h4>
   <input id="lineSize" type="number" step="0.1" placeholder="糸の太さ 例：1.2">
   <input id="lineLength" type="number" placeholder="長さ 例：200">
@@ -327,6 +351,7 @@ const today = new Date().toISOString().slice(0, 10);
 
 const statusEl = document.getElementById("status");
 const nameEl = document.getElementById("name");
+const reelTypeEl = document.getElementById("reelType");
 const lineSizeEl = document.getElementById("lineSize");
 const lineLengthEl = document.getElementById("lineLength");
 const spooledAtEl = document.getElementById("spooledAt");
@@ -361,6 +386,7 @@ function setStatus(text) {
 function clearForm() {
   editingId = null;
   nameEl.value = "";
+  reelTypeEl.value = "EL";
   lineSizeEl.value = "";
   lineLengthEl.value = "";
   spooledAtEl.value = today;
@@ -389,6 +415,7 @@ saveBtn.addEventListener("click", async function () {
 
     const data = {
       name: nameEl.value.trim(),
+      reelType: reelTypeEl.value,
       lineSize: lineSizeEl.value,
       lineLength: lineLengthEl.value,
       spooledAt: spooledAtEl.value,
@@ -454,6 +481,7 @@ async function load() {
 function renderSummary() {
   summaryEl.innerHTML = `
     <div class="summary-row header">
+      <div class="summary-cell">種</div>
       <div class="summary-cell">リール</div>
       <div class="summary-cell center">号</div>
       <div class="summary-cell">長さ</div>
@@ -466,6 +494,7 @@ function renderSummary() {
   reels.forEach((d, index) => {
     const hasMemo = d.memo && d.memo.trim().length > 0;
     const isActive = sortTargetId === d.id;
+    const type = d.reelType || "OT";
 
     if (isActive) {
       summaryEl.innerHTML += `
@@ -478,7 +507,10 @@ function renderSummary() {
           onmouseup="cancelLongPress()"
           onmouseleave="cancelLongPress()"
         >
-          <div class="summary-cell sort-name">${escapeHtml(shortNameByWidth(d.name || "-"))}</div>
+          <div class="summary-cell sort-name">
+            <span class="type-badge type-${type}">${type}</span>
+            ${escapeHtml(shortNameByWidth(d.name || "-"))}
+          </div>
           <button class="sort-btn" onclick="moveReel('${d.id}', -1)" ${index === 0 ? "disabled" : ""}>↑</button>
           <button class="sort-btn" onclick="moveReel('${d.id}', 1)" ${index === reels.length - 1 ? "disabled" : ""}>↓</button>
         </div>
@@ -496,6 +528,7 @@ function renderSummary() {
         onmouseup="cancelLongPress()"
         onmouseleave="cancelLongPress()"
       >
+        <div class="summary-cell"><span class="type-badge type-${type}">${type}</span></div>
         <div class="summary-cell summary-link" onclick="handleSummaryTap('${d.id}')">${escapeHtml(shortNameByWidth(d.name || "-"))}</div>
         <div class="summary-cell center">${escapeHtml(d.lineSize || "-")}</div>
         <div class="summary-cell">${escapeHtml(d.lineLength || "-")}</div>
@@ -513,10 +546,14 @@ function renderCards() {
   reels.forEach(d => {
     const count = Number(d.usageCount || 0);
     const spareCount = Number(d.spareUsageCount || 0);
+    const type = d.reelType || "OT";
 
     listEl.innerHTML += `
       <li data-id="${d.id}" id="card-${d.id}">
-        <div class="title">${escapeHtml(d.name || "")}</div>
+        <div class="title">
+          <span class="type-badge type-${type}">${type}</span>
+          ${escapeHtml(d.name || "")}
+        </div>
 
         <div class="line-block">
           <div class="line-label">メインスプール</div>
@@ -660,6 +697,7 @@ function editReel(id) {
     editingId = id;
 
     nameEl.value = d.name || "";
+    reelTypeEl.value = d.reelType || "OT";
     lineSizeEl.value = d.lineSize || "";
     lineLengthEl.value = d.lineLength || "";
     spooledAtEl.value = d.spooledAt || today;
@@ -730,7 +768,7 @@ function shortNameByWidth(str) {
 
   for (const ch of String(str || "")) {
     const w = ch.match(/[ -~]/) ? 1 : 2;
-    if (width + w > 20) break;
+    if (width + w > 24) break;
     result += ch;
     width += w;
   }
