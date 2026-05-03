@@ -56,7 +56,7 @@ h2 {
 
 .summary-row {
   display: grid;
-  grid-template-columns: 1.9fr 0.42fr 0.62fr 0.9fr 0.5fr 0.5fr 0.75fr;
+  grid-template-columns: 1.85fr 0.42fr 0.6fr 0.85fr 0.45fr 0.45fr 0.72fr;
   gap: 4px;
   align-items: center;
   padding: 10px 4px;
@@ -73,6 +73,8 @@ h2 {
 .summary-row.active-sort {
   background: #dbeafe;
   border-radius: 10px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .summary-cell {
@@ -99,21 +101,29 @@ h2 {
 
 .sort-buttons {
   display: flex;
+  flex-direction: column;
   gap: 4px;
-  justify-content: flex-end;
+  align-items: stretch;
+  justify-content: center;
 }
 
 .sort-buttons button {
-  width: auto;
-  padding: 6px 8px;
+  width: 100%;
+  padding: 5px 0;
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1;
   border-radius: 8px;
   background: #2563eb;
 }
 
+.sort-buttons button:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+}
+
 .sort-placeholder {
-  text-align: right;
+  text-align: center;
   color: #94a3b8;
   font-size: 12px;
 }
