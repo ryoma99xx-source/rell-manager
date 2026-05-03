@@ -70,6 +70,15 @@ h2 {
   font-size: 11px;
 }
 
+.summary-row.item {
+  cursor: grab;
+}
+
+.summary-row.item:active {
+  cursor: grabbing;
+  background: #dbeafe;
+}
+
 .summary-row:last-child { border-bottom: none; }
 
 .summary-cell {
@@ -82,7 +91,6 @@ h2 {
   color: #111827;
   text-decoration: underline;
   text-underline-offset: 3px;
-  cursor: pointer;
 }
 
 .center {
@@ -188,12 +196,6 @@ li.highlight {
 .editBtn { background: #f59e0b; }
 .deleteBtn { background: #ef4444; }
 
-.drag {
-  color: #94a3b8;
-  font-size: 13px;
-  margin-bottom: 6px;
-}
-
 .small {
   color: #64748b;
   font-size: 13px;
@@ -221,12 +223,13 @@ li.highlight {
 
 <section class="section section-list">
   <h3>登録リール一覧</h3>
+  <p class="small">一覧の行を長押しして上下にドラッグすると並び替えできます。</p>
   <div class="summary" id="summary"></div>
 </section>
 
 <section class="section section-cards">
   <h3>登録リール</h3>
-  <p class="small">カードを長押しして上下にドラッグすると並び替えできます。</p>
+  <p class="small">リール名は一覧からタップすると該当カードへ移動できます。</p>
   <ul id="list"></ul>
 </section>
 
@@ -445,7 +448,7 @@ function renderSummary() {
     const hasMemo = d.memo && d.memo.trim().length > 0;
 
     summaryEl.innerHTML += `
-      <div class="summary-row">
+      <div class="summary-row item" data-id="${d.id}">
         <div class="summary-cell summary-link" onclick="scrollToReel('${d.id}')">${escapeHtml(shortNameByWidth(d.name || "-"))}</div>
         <div class="summary-cell center">${escapeHtml(d.lineSize || "-")}</div>
         <div class="summary-cell">${escapeHtml(d.lineLength || "-")}</div>
@@ -455,6 +458,8 @@ function renderSummary() {
       </div>
     `;
   });
+
+  setupSummarySort();
 }
 
 function renderCards() {
@@ -466,7 +471,6 @@ function renderCards() {
 
     listEl.innerHTML += `
       <li data-id="${d.id}" id="card-${d.id}">
-        <div class="drag">☰ 長押しで並び替え</div>
         <div class="title">${escapeHtml(d.name || "")}</div>
 
         <div class="line-block">
@@ -501,8 +505,6 @@ function renderCards() {
       </li>
     `;
   });
-
-  setupSort();
 }
 
 async function addUsage(id, type, count) {
@@ -592,16 +594,19 @@ async function deleteReel(id) {
   }
 }
 
-function setupSort() {
-  new Sortable(listEl, {
+function setupSummarySort() {
+  new Sortable(summaryEl, {
     animation: 150,
     delay: 250,
     delayOnTouchOnly: true,
+    draggable: ".summary-row.item",
+    filter: ".header",
     onEnd: async function () {
       try {
         setStatus("並び順を保存中...");
 
-        const ids = Array.from(listEl.children).map(li => li.dataset.id);
+        const ids = Array.from(summaryEl.querySelectorAll(".summary-row.item"))
+          .map(row => row.dataset.id);
 
         for (let i = 0; i < ids.length; i++) {
           await db.collection("reels").doc(ids[i]).update({
