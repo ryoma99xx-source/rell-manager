@@ -859,7 +859,60 @@ window.startLongPress = startLongPress;
 window.cancelLongPress = cancelLongPress;
 window.handleSummaryTap = handleSummaryTap;
 window.moveReel = moveReel;
+document.getElementById("csvBackupBtn").addEventListener("click", exportCsv);
 
+function exportCsv() {
+  const headers = [
+    "リール名",
+    "種類",
+    "メイン号数",
+    "メイン長さ",
+    "メイン巻替日",
+    "メイン最終利用日",
+    "メイン使用回数",
+    "替スプール有無",
+    "替号数",
+    "替長さ",
+    "替巻替日",
+    "替最終利用日",
+    "替使用回数",
+    "メモ"
+  ];
+
+  const rows = reels.map(r => [
+    r.name || "",
+    r.reelType || "",
+    r.lineSize || "",
+    r.lineLength || "",
+    r.spooledAt || "",
+    r.usedAt || "",
+    r.usageCount ?? "",
+    r.hasSpareSpool ? "あり" : "なし",
+    r.spareLineSize || "",
+    r.spareLineLength || "",
+    r.spareSpooledAt || "",
+    r.spareUsedAt || "",
+    r.spareUsageCount ?? "",
+    r.memo || ""
+  ]);
+
+  const csv = [headers, ...rows]
+    .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+
+  const bom = "\uFEFF";
+  const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+
+  const date = new Date().toISOString().slice(0, 10);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `reel-backup-${date}.csv`;
+  a.click();
+
+  URL.revokeObjectURL(url);
+  setStatus("CSVバックアップを出力しました");
+}
 load();
 </script>
 
