@@ -24,9 +24,78 @@ h2 {
   margin: 48px 0 18px;
 }
 
-h3 {
-  margin-top: 28px;
-  margin-bottom: 10px;
+.section {
+  border-radius: 18px;
+  padding: 14px;
+  margin: 18px 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.section h3 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.section-list {
+  background: #eff6ff;
+}
+
+.section-cards {
+  background: #ffffff;
+}
+
+.section-form {
+  background: #fffbeb;
+}
+
+#status {
+  background: white;
+  padding: 12px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  font-size: 16px;
+}
+
+.summary {
+  background: white;
+  border-radius: 14px;
+  padding: 8px;
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 1.8fr 0.45fr 0.75fr 0.95fr 0.55fr;
+  gap: 4px;
+  align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 14px;
+}
+
+.summary-row.header {
+  color: #64748b;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-cell {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.size-cell {
+  text-align: center;
+  font-weight: bold;
+}
+
+.memo-mark {
+  text-align: center;
+  font-weight: bold;
 }
 
 input, textarea, button {
@@ -63,64 +132,17 @@ button {
   display: none;
 }
 
-#status {
-  background: white;
-  padding: 12px;
-  border-radius: 14px;
-  margin-bottom: 18px;
-  font-size: 16px;
-}
-
-.summary {
-  background: white;
-  border-radius: 16px;
-  padding: 10px;
-  margin: 12px 0 22px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-}
-
-.summary-row {
-  display: grid;
-  grid-template-columns: 1.4fr .8fr .8fr .7fr 1fr .6fr;
-  gap: 4px;
-  align-items: center;
-  padding: 9px 4px;
-  border-bottom: 1px solid #eef2f7;
-  font-size: 12px;
-}
-
-.summary-row.header {
-  color: #64748b;
-  font-weight: bold;
-  font-size: 11px;
-}
-
-.summary-row:last-child {
-  border-bottom: none;
-}
-
-.summary-cell {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.memo-mark {
-  text-align: center;
-  font-weight: bold;
-}
-
 ul {
   padding: 0;
 }
 
 li {
   list-style: none;
-  background: white;
+  background: #f8fafc;
   margin: 12px 0;
   padding: 14px;
   border-radius: 14px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
 }
 
 .title {
@@ -162,7 +184,7 @@ li {
 .small {
   color: #64748b;
   font-size: 13px;
-  margin-top: 4px;
+  margin: 4px 0 12px;
 }
 </style>
 </head>
@@ -172,32 +194,38 @@ li {
 <h2>リール糸管理</h2>
 <div id="status">読み込み中...</div>
 
-<h3>登録リール一覧</h3>
-<div class="summary" id="summary"></div>
+<section class="section section-list">
+  <h3>登録リール一覧</h3>
+  <div class="summary" id="summary"></div>
+</section>
 
-<h3>登録リール</h3>
-<p class="small">カードを長押しして上下にドラッグすると並び替えできます。</p>
-<ul id="list"></ul>
+<section class="section section-cards">
+  <h3>登録リール</h3>
+  <p class="small">カードを長押しして上下にドラッグすると並び替えできます。</p>
+  <ul id="list"></ul>
+</section>
 
-<h3>新規登録 / 編集</h3>
+<section class="section section-form">
+  <h3>新規登録 / 編集</h3>
 
-<input id="name" placeholder="リール名">
-<input id="lineSize" type="number" step="0.1" placeholder="糸の太さ 例：1.2">
-<input id="lineLength" type="number" placeholder="長さ 例：200">
+  <input id="name" placeholder="リール名">
+  <input id="lineSize" type="number" step="0.1" placeholder="糸の太さ 例：1.2">
+  <input id="lineLength" type="number" placeholder="長さ 例：200">
 
-<label>巻き替え日</label>
-<input id="spooledAt" type="date">
+  <label>巻き替え日</label>
+  <input id="spooledAt" type="date">
 
-<label>利用日</label>
-<input id="usedAt" type="date">
+  <label>利用日</label>
+  <input id="usedAt" type="date">
 
-<label>使用回数</label>
-<input id="usageCount" type="number" min="0" value="1">
+  <label>使用回数</label>
+  <input id="usageCount" type="number" min="0" value="1">
 
-<textarea id="memo" placeholder="メモ"></textarea>
+  <textarea id="memo" placeholder="メモ"></textarea>
 
-<button id="saveBtn">新規保存</button>
-<button id="cancelBtn">編集キャンセル</button>
+  <button id="saveBtn">新規保存</button>
+  <button id="cancelBtn">編集キャンセル</button>
+</section>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -328,10 +356,9 @@ function renderSummary() {
   summaryEl.innerHTML = `
     <div class="summary-row header">
       <div class="summary-cell">リール</div>
-      <div class="summary-cell">号</div>
+      <div class="summary-cell size-cell">号</div>
       <div class="summary-cell">長さ</div>
-      <div class="summary-cell">回</div>
-      <div class="summary-cell">利用日</div>
+      <div class="summary-cell">巻替日</div>
       <div class="summary-cell memo-mark">メモ</div>
     </div>
   `;
@@ -341,11 +368,10 @@ function renderSummary() {
 
     summaryEl.innerHTML += `
       <div class="summary-row">
-        <div class="summary-cell">${escapeHtml(d.name || "-")}</div>
-        <div class="summary-cell">${escapeHtml(d.lineSize || "-")}</div>
+        <div class="summary-cell">${escapeHtml(shortName(d.name || "-"))}</div>
+        <div class="summary-cell size-cell">${escapeHtml(d.lineSize || "-")}</div>
         <div class="summary-cell">${escapeHtml(d.lineLength || "-")}m</div>
-        <div class="summary-cell">${Number(d.usageCount || 0)}</div>
-        <div class="summary-cell">${escapeHtml(d.usedAt || "-")}</div>
+        <div class="summary-cell">${escapeHtml(formatShortDate(d.spooledAt))}</div>
         <div class="summary-cell memo-mark">${hasMemo ? "有" : "-"}</div>
       </div>
     `;
@@ -476,6 +502,23 @@ function setupSort() {
       }
     }
   });
+}
+
+function shortName(str) {
+  return String(str || "").slice(0, 11);
+}
+
+function formatShortDate(dateStr) {
+  if (!dateStr) return "-";
+
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+
+  const year = parts[0].slice(2);
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+
+  return month + "/" + day + "/" + year;
 }
 
 function escapeHtml(str) {
