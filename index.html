@@ -83,10 +83,26 @@ h2 { font-size: 30px; margin: 48px 0 18px; }
   text-overflow: ellipsis;
 }
 
+.reel-name-cell {
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+.reel-name-cell::-webkit-scrollbar {
+  display: none;
+}
+
 .summary-link {
   color: #111827;
   text-decoration: underline;
   text-underline-offset: 3px;
+  display: inline-block;
+  min-width: 100%;
 }
 
 .type-badge {
@@ -249,7 +265,7 @@ li.highlight {
 
 <section class="section section-list">
   <h3>登録リール一覧</h3>
-  <p class="small">リール名タップで詳細へ移動。行を長押しすると、その行だけ並び替えできます。同じ行を再度長押しで解除。</p>
+  <p class="small">リール名は左右スクロールで全文確認できます。タップで詳細へ移動。長押しで並び替え。</p>
   <div class="summary" id="summary"></div>
 </section>
 
@@ -650,7 +666,7 @@ function renderSummary() {
         >
           <div class="summary-cell sort-name">
             <span class="type-badge type-${type}">${type}</span>
-            ${escapeHtml(shortNameByWidth(d.name || "-"))}
+            ${escapeHtml(d.name || "-")}
           </div>
           <button class="sort-btn" onclick="moveReel('${d.id}', -1)" ${index === 0 ? "disabled" : ""}>↑</button>
           <button class="sort-btn" onclick="moveReel('${d.id}', 1)" ${index === reels.length - 1 ? "disabled" : ""}>↓</button>
@@ -670,7 +686,9 @@ function renderSummary() {
         onmouseleave="cancelLongPress()"
       >
         <div class="summary-cell"><span class="type-badge type-${type}">${type}</span></div>
-        <div class="summary-cell summary-link" onclick="handleSummaryTap('${d.id}')">${escapeHtml(shortNameByWidth(d.name || "-"))}</div>
+        <div class="summary-cell reel-name-cell">
+          <span class="summary-link" onclick="handleSummaryTap('${d.id}')">${escapeHtml(d.name || "-")}</span>
+        </div>
         <div class="summary-cell center">${escapeHtml(d.lineSize || "-")}</div>
         <div class="summary-cell">${escapeHtml(d.lineLength || "-")}</div>
         <div class="summary-cell">${escapeHtml(formatShortDate(d.spooledAt))}</div>
@@ -983,20 +1001,6 @@ function exportCsv() {
   } catch (e) {
     setStatus("CSV出力エラー：" + e.message);
   }
-}
-
-function shortNameByWidth(str) {
-  let result = "";
-  let width = 0;
-
-  for (const ch of String(str || "")) {
-    const w = ch.match(/[ -~]/) ? 1 : 2;
-    if (width + w > 24) break;
-    result += ch;
-    width += w;
-  }
-
-  return result;
 }
 
 function formatShortDate(dateStr) {
