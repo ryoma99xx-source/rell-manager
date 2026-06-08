@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>リール巻き糸管理</title>
+<title>リール糸管理</title>
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -284,8 +284,9 @@ li {
 
 <body>
 
-<h2>リール巻き糸管理</h2>
+<h2>リール糸管理</h2>
 <div id="status">読み込み中...</div>
+
 
 <section class="section section-list">
   <h3>登録リール一覧</h3>
@@ -399,6 +400,12 @@ li {
   <textarea id="newStockMemo" placeholder="ストックメモ"></textarea>
 
   <button id="createStockBtn" class="stock-save">ラインストックを新規保存</button>
+</section>
+
+
+<section class="section">
+  <h3>バックアップ</h3>
+  <button id="csvBackupBtn">CSVでバックアップ</button>
 </section>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -1342,11 +1349,5 @@ updateNewSpareFieldsVisibility();
 load();
 </script>
 
-<section class="section">
-  <h3>バックアップ</h3>
-  <button id="csvBackupBtn">
-    CSVでバックアップ
-  </button>
-</section>
 </body>
 </html>
