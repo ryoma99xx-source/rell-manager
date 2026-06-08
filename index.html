@@ -33,6 +33,8 @@ h2 { font-size: 30px; margin: 48px 0 18px; }
 .section-list { background: #eff6ff; }
 .section-cards { background: #ffffff; }
 .section-form { background: #fffbeb; }
+.section-stock { background: #ecfdf5; }
+.section-memo { background: #f5f3ff; }
 
 #status {
   background: white;
@@ -93,9 +95,7 @@ h2 { font-size: 30px; margin: 48px 0 18px; }
   touch-action: pan-x;
 }
 
-.reel-name-cell::-webkit-scrollbar {
-  display: none;
-}
+.reel-name-cell::-webkit-scrollbar { display: none; }
 
 .summary-link {
   color: #111827;
@@ -173,10 +173,14 @@ button {
   font-weight: bold;
 }
 
-#cancelBtn {
+#cancelBtn,
+#cancelStockBtn {
   background: #64748b;
   display: none;
 }
+
+#saveStockBtn { background: #059669; }
+#saveAppMemoBtn { background: #7c3aed; }
 
 ul { padding: 0; }
 
@@ -254,6 +258,20 @@ li.highlight {
 }
 
 .sub-section h4 { margin: 0 0 10px; }
+
+.stock-card {
+  background: white;
+  border-radius: 14px;
+  padding: 12px;
+  margin: 10px 0;
+  border: 1px solid #d1fae5;
+}
+
+.stock-title {
+  font-weight: bold;
+  font-size: 18px;
+  margin-bottom: 4px;
+}
 </style>
 </head>
 
@@ -348,6 +366,30 @@ li.highlight {
   <button id="cancelBtn">編集キャンセル</button>
 </section>
 
+<section class="section section-stock">
+  <h3>ラインストック</h3>
+  <p class="small">巻き替え用に持っているライン在庫を管理できます。</p>
+
+  <div id="stockList"></div>
+
+  <h4>ラインストック追加 / 編集</h4>
+  <input id="stockName" placeholder="メーカー・商品名 例：PE X8">
+  <input id="stockSize" type="number" step="0.1" placeholder="号数 例：1.5">
+  <input id="stockLength" type="number" placeholder="長さ 例：200">
+  <input id="stockQuantity" type="number" min="0" value="1" placeholder="個数">
+  <textarea id="stockMemo" placeholder="ストックメモ"></textarea>
+
+  <button id="saveStockBtn">ストック保存</button>
+  <button id="cancelStockBtn">ストック編集キャンセル</button>
+</section>
+
+<section class="section section-memo">
+  <h3>全体メモ</h3>
+  <p class="small">買うもの、次回確認すること、釣行前の注意などを自由に残せます。</p>
+  <textarea id="appMemo" placeholder="自由メモ"></textarea>
+  <button id="saveAppMemoBtn">全体メモを保存</button>
+</section>
+
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
@@ -370,7 +412,9 @@ db.settings({
 });
 
 let reels = [];
+let lineStocks = [];
 let editingId = null;
+let editingStockId = null;
 let sortTargetId = null;
 let longPressTimer = null;
 let longPressTriggered = false;
@@ -413,6 +457,17 @@ const listEl = document.getElementById("list");
 const summaryEl = document.getElementById("summary");
 const csvBackupBtn = document.getElementById("csvBackupBtn");
 
+const stockListEl = document.getElementById("stockList");
+const stockNameEl = document.getElementById("stockName");
+const stockSizeEl = document.getElementById("stockSize");
+const stockLengthEl = document.getElementById("stockLength");
+const stockQuantityEl = document.getElementById("stockQuantity");
+const stockMemoEl = document.getElementById("stockMemo");
+const saveStockBtn = document.getElementById("saveStockBtn");
+const cancelStockBtn = document.getElementById("cancelStockBtn");
+const appMemoEl = document.getElementById("appMemo");
+const saveAppMemoBtn = document.getElementById("saveAppMemoBtn");
+
 spooledAtEl.value = today;
 usedAtEl.value = today;
 spare1SpooledAtEl.value = today;
@@ -423,6 +478,9 @@ spare2UsedAtEl.value = today;
 spareSpoolCountEl.addEventListener("change", updateSpareFieldsVisibility);
 cancelBtn.addEventListener("click", clearForm);
 csvBackupBtn.addEventListener("click", exportCsv);
+saveStockBtn.addEventListener("click", saveLineStock);
+cancelStockBtn.addEventListener("click", clearStockForm);
+saveAppMemoBtn.addEventListener("click", saveAppMemo);
 
 function setStatus(text) {
   statusEl.innerText = text;
@@ -607,6 +665,9 @@ async function load() {
 
     renderSummary();
     renderCards();
+    await loadLineStocks();
+    await loadAppMemo();
+
     setStatus("読み込み完了");
 
   } catch (e) {
@@ -956,6 +1017,155 @@ function scrollToReel(id) {
   }, 1000);
 }
 
+async function loadLineStocks() {
+  const snapshot = await db.collection("lineStocks").get();
+
+  lineStocks = [];
+  snapshot.forEach(doc => {
+    lineStocks.push({ id: doc.id, ...doc.data() });
+  });
+
+  lineStocks.sort((a, b) => {
+    const aTime = getTimeValue(a.createdAt) || 0;
+    const bTime = getTimeValue(b.createdAt) || 0;
+    return aTime - bTime;
+  });
+
+  renderLineStocks();
+}
+
+function renderLineStocks() {
+  stockListEl.innerHTML = "";
+
+  if (lineStocks.length === 0) {
+    stockListEl.innerHTML = `<div class="small">まだストック登録がありません。</div>`;
+    return;
+  }
+
+  lineStocks.forEach(s => {
+    stockListEl.innerHTML += `
+      <div class="stock-card">
+        <div class="stock-title">${escapeHtml(s.name || "-")}</div>
+        <div>号数：${escapeHtml(s.size || "-")}号</div>
+        <div>長さ：${escapeHtml(s.length || "-")}m</div>
+        <div>個数：${Number(s.quantity || 0)}個</div>
+        <div class="memo">${escapeHtml(s.memo || "メモなし")}</div>
+        <div class="row">
+          <button class="editBtn" onclick="editLineStock('${s.id}')">編集</button>
+          <button class="deleteBtn" onclick="deleteLineStock('${s.id}')">削除</button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+async function saveLineStock() {
+  try {
+    setStatus("ストック保存中...");
+
+    const data = {
+      name: stockNameEl.value.trim(),
+      size: stockSizeEl.value,
+      length: stockLengthEl.value,
+      quantity: Number(stockQuantityEl.value || 0),
+      memo: stockMemoEl.value,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!data.name) {
+      setStatus("ストックの商品名を入力してください");
+      return;
+    }
+
+    if (editingStockId) {
+      await db.collection("lineStocks").doc(editingStockId).update(data);
+      setStatus("ストックを更新しました");
+    } else {
+      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      await db.collection("lineStocks").add(data);
+      setStatus("ストックを保存しました");
+    }
+
+    clearStockForm();
+    await loadLineStocks();
+
+  } catch (e) {
+    setStatus("ストック保存エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+function editLineStock(id) {
+  const s = lineStocks.find(x => x.id === id);
+  if (!s) return;
+
+  editingStockId = id;
+  stockNameEl.value = s.name || "";
+  stockSizeEl.value = s.size || "";
+  stockLengthEl.value = s.length || "";
+  stockQuantityEl.value = Number(s.quantity || 0);
+  stockMemoEl.value = s.memo || "";
+
+  saveStockBtn.innerText = "ストック編集内容を保存";
+  cancelStockBtn.style.display = "block";
+  setStatus("ストック編集中：" + (s.name || ""));
+
+  window.scrollTo({
+    top: document.body.scrollHeight,
+    behavior: "smooth"
+  });
+}
+
+async function deleteLineStock(id) {
+  try {
+    if (!confirm("このラインストックを削除しますか？")) return;
+
+    setStatus("ストック削除中...");
+    await db.collection("lineStocks").doc(id).delete();
+    setStatus("ストックを削除しました");
+    await loadLineStocks();
+
+  } catch (e) {
+    setStatus("ストック削除エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+function clearStockForm() {
+  editingStockId = null;
+  stockNameEl.value = "";
+  stockSizeEl.value = "";
+  stockLengthEl.value = "";
+  stockQuantityEl.value = 1;
+  stockMemoEl.value = "";
+  saveStockBtn.innerText = "ストック保存";
+  cancelStockBtn.style.display = "none";
+}
+
+async function loadAppMemo() {
+  const doc = await db.collection("appMeta").doc("memo").get();
+  if (doc.exists) {
+    appMemoEl.value = doc.data().text || "";
+  }
+}
+
+async function saveAppMemo() {
+  try {
+    setStatus("全体メモ保存中...");
+
+    await db.collection("appMeta").doc("memo").set({
+      text: appMemoEl.value,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    setStatus("全体メモを保存しました");
+
+  } catch (e) {
+    setStatus("全体メモ保存エラー：" + e.message);
+    console.error(e);
+  }
+}
+
 function exportCsv() {
   try {
     if (!reels || reels.length === 0) {
@@ -981,9 +1191,20 @@ function exportCsv() {
       r.memo || ""
     ]);
 
-    const csv = [headers, ...rows]
+    const stockHeaders = ["商品名","号数","長さ","個数","メモ"];
+    const stockRows = lineStocks.map(s => [
+      s.name || "", s.size || "", s.length || "", s.quantity ?? "", s.memo || ""
+    ]);
+
+    const csvMain = [headers, ...rows]
       .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
       .join("\n");
+
+    const csvStock = [stockHeaders, ...stockRows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const csv = csvMain + "\n\nラインストック\n" + csvStock + "\n\n全体メモ\n" + `"${String(appMemoEl.value || "").replace(/"/g, '""')}"`;
 
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -1036,6 +1257,8 @@ window.startLongPress = startLongPress;
 window.cancelLongPress = cancelLongPress;
 window.handleSummaryTap = handleSummaryTap;
 window.moveReel = moveReel;
+window.editLineStock = editLineStock;
+window.deleteLineStock = deleteLineStock;
 
 updateSpareFieldsVisibility();
 load();
