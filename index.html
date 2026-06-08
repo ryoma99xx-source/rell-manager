@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>リール巻き糸管理ツール</title>
+<title>リール糸管理</title>
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -121,6 +121,35 @@ h2 { font-size: 30px; margin: 48px 0 18px; }
   color: #64748b;
   font-weight: bold;
   font-size: 11px;
+}
+
+.memo-summary-row {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr;
+  gap: 4px;
+  align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid #ddd6fe;
+  font-size: 13px;
+}
+
+.memo-summary-row.header {
+  color: #64748b;
+  font-weight: bold;
+  font-size: 11px;
+}
+
+.memo-title-link {
+  color: #111827;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.memo-date {
+  text-align: right;
+  color: #64748b;
+  font-size: 12px;
 }
 
 .type-badge {
@@ -284,7 +313,7 @@ li {
 
 <body>
 
-<h2>リール巻き糸管理ツール</h2>
+<h2>リール糸管理</h2>
 <div id="status">読み込み中...</div>
 
 
@@ -300,6 +329,12 @@ li {
   <div class="summary" id="stockSummary"></div>
 </section>
 
+<section class="section section-memo-list">
+  <h3>メモ一覧</h3>
+  <p class="small">メモの書き出し10文字程度を表示します。タップすると下の詳細/編集エリアに表示します。</p>
+  <div class="summary" id="memoSummary"></div>
+</section>
+
 <section class="section section-detail">
   <h3>登録リール詳細 / 編集</h3>
   <div id="reelDetail"></div>
@@ -311,10 +346,8 @@ li {
 </section>
 
 <section class="section section-memo">
-  <h3>全体メモ</h3>
-  <p class="small">買うもの、次回確認すること、釣行前の注意などを自由に残せます。</p>
-  <textarea id="appMemo" placeholder="自由メモ"></textarea>
-  <button id="saveAppMemoBtn" class="memo-save">全体メモを保存</button>
+  <h3>メモ詳細 / 編集</h3>
+  <div id="memoDetail"></div>
 </section>
 
 <section class="section section-form">
@@ -403,6 +436,14 @@ li {
 </section>
 
 
+<section class="section section-memo-form">
+  <h3>メモ新規登録</h3>
+  <p class="small">釣具の買い物メモ、釣行前メモ、注意事項などを1件ずつ登録できます。</p>
+  <textarea id="newAppMemo" placeholder="メモ内容"></textarea>
+  <button id="createMemoBtn" class="memo-save">メモを新規保存</button>
+</section>
+
+
 <section class="section">
   <h3>バックアップ</h3>
   <button id="csvBackupBtn">CSVでバックアップ</button>
@@ -431,8 +472,10 @@ db.settings({
 
 let reels = [];
 let lineStocks = [];
+let lineMemos = [];
 let selectedReelId = null;
 let selectedStockId = null;
+let selectedMemoId = null;
 let sortTargetId = null;
 let longPressTimer = null;
 let longPressTriggered = false;
@@ -445,14 +488,16 @@ const summaryEl = document.getElementById("summary");
 const stockSummaryEl = document.getElementById("stockSummary");
 const reelDetailEl = document.getElementById("reelDetail");
 const stockDetailEl = document.getElementById("stockDetail");
-const appMemoEl = document.getElementById("appMemo");
+const memoSummaryEl = document.getElementById("memoSummary");
+const memoDetailEl = document.getElementById("memoDetail");
+const newAppMemoEl = document.getElementById("newAppMemo");
 
 const newSpareSpoolCountEl = document.getElementById("newSpareSpoolCount");
 const newSpare1FieldsEl = document.getElementById("newSpare1Fields");
 const newSpare2FieldsEl = document.getElementById("newSpare2Fields");
 
 document.getElementById("csvBackupBtn").addEventListener("click", exportCsv);
-document.getElementById("saveAppMemoBtn").addEventListener("click", saveAppMemo);
+document.getElementById("createMemoBtn").addEventListener("click", createLineMemo);
 document.getElementById("createReelBtn").addEventListener("click", createReel);
 document.getElementById("createStockBtn").addEventListener("click", createLineStock);
 newSpareSpoolCountEl.addEventListener("change", updateNewSpareFieldsVisibility);
@@ -569,10 +614,11 @@ async function load() {
     sortReelsStable();
 
     await loadLineStocks();
-    await loadAppMemo();
+    await loadLineMemos();
 
     if (selectedReelId && !reels.find(r => r.id === selectedReelId)) selectedReelId = null;
     if (selectedStockId && !lineStocks.find(s => s.id === selectedStockId)) selectedStockId = null;
+    if (selectedMemoId && !lineMemos.find(m => m.id === selectedMemoId)) selectedMemoId = null;
 
     renderAll();
 
@@ -606,8 +652,10 @@ function migrateLegacySpoolData(d) {
 function renderAll() {
   renderSummary();
   renderStockSummary();
+  renderMemoSummary();
   renderReelDetail();
   renderStockDetail();
+  renderMemoDetail();
 }
 
 function renderSummary() {
@@ -733,6 +781,60 @@ function selectLineStock(id) {
     block: "start"
   });
 }
+
+
+function renderMemoSummary() {
+  memoSummaryEl.innerHTML = `
+    <div class="memo-summary-row header">
+      <div>メモ</div>
+      <div class="memo-date">更新日</div>
+    </div>
+  `;
+
+  if (lineMemos.length === 0) {
+    memoSummaryEl.innerHTML += `<div class="empty-box">まだメモ登録がありません。</div>`;
+    return;
+  }
+
+  lineMemos.forEach(m => {
+    memoSummaryEl.innerHTML += `
+      <div class="memo-summary-row" onclick="selectLineMemo('${m.id}')">
+        <div class="summary-cell memo-title-link">${escapeHtml(getMemoTitle(m.text || ""))}</div>
+        <div class="memo-date">${escapeHtml(formatMemoDate(m.updatedAt || m.createdAt))}</div>
+      </div>
+    `;
+  });
+}
+
+function selectLineMemo(id) {
+  selectedMemoId = id;
+  renderMemoDetail();
+
+  document.querySelector(".section-memo").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function renderMemoDetail() {
+  const m = lineMemos.find(x => x.id === selectedMemoId);
+
+  if (!m) {
+    memoDetailEl.innerHTML = `<div class="empty-box">一覧からメモを選択すると詳細と編集フォームが表示されます。</div>`;
+    return;
+  }
+
+  memoDetailEl.innerHTML = `
+    <div class="detail-box">
+      <textarea id="detailMemoText" placeholder="メモ内容">${escapeHtml(m.text || "")}</textarea>
+      <div class="row">
+        <button class="editBtn" onclick="saveSelectedLineMemo()">編集内容を保存</button>
+        <button class="deleteBtn" onclick="deleteLineMemo('${m.id}')">削除</button>
+      </div>
+    </div>
+  `;
+}
+
 
 function renderReelDetail() {
   const d = reels.find(x => x.id === selectedReelId);
@@ -1222,26 +1324,120 @@ async function deleteLineStock(id) {
   }
 }
 
-async function loadAppMemo() {
-  const doc = await db.collection("appMeta").doc("memo").get();
-  if (doc.exists) {
-    appMemoEl.value = doc.data().text || "";
+
+async function loadLineMemos() {
+  const snapshot = await db.collection("lineMemos").get();
+
+  lineMemos = [];
+  snapshot.forEach(doc => {
+    lineMemos.push({ id: doc.id, ...doc.data() });
+  });
+
+  lineMemos.sort((a, b) => {
+    const bTime = getTimeValue(b.updatedAt) || getTimeValue(b.createdAt) || 0;
+    const aTime = getTimeValue(a.updatedAt) || getTimeValue(a.createdAt) || 0;
+    return bTime - aTime;
+  });
+
+  if (lineMemos.length === 0) {
+    await migrateLegacyAppMemoToLineMemo();
   }
 }
 
-async function saveAppMemo() {
-  try {
-    setStatus("全体メモ保存中...");
+async function migrateLegacyAppMemoToLineMemo() {
+  const legacyDoc = await db.collection("appMeta").doc("memo").get();
+  if (!legacyDoc.exists) return;
 
-    await db.collection("appMeta").doc("memo").set({
-      text: appMemoEl.value,
+  const text = legacyDoc.data().text || "";
+  if (!text.trim()) return;
+
+  const alreadyMigrated = localStorage.getItem("legacyMemoMigrated") === "true";
+  if (alreadyMigrated) return;
+
+  const data = {
+    text,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  await db.collection("lineMemos").add(data);
+  localStorage.setItem("legacyMemoMigrated", "true");
+
+  const snapshot = await db.collection("lineMemos").get();
+  lineMemos = [];
+  snapshot.forEach(doc => {
+    lineMemos.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function createLineMemo() {
+  try {
+    setStatus("メモ保存中...");
+
+    const text = newAppMemoEl.value.trim();
+
+    if (!text) {
+      setStatus("メモ内容を入力してください");
+      return;
+    }
+
+    await db.collection("lineMemos").add({
+      text,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    setStatus("全体メモを保存しました");
+    newAppMemoEl.value = "";
+    setStatus("メモを保存しました");
+    await load();
 
   } catch (e) {
-    setStatus("全体メモ保存エラー：" + e.message);
+    setStatus("メモ保存エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+async function saveSelectedLineMemo() {
+  try {
+    if (!selectedMemoId) return;
+
+    const text = document.getElementById("detailMemoText").value.trim();
+
+    if (!text) {
+      setStatus("メモ内容を入力してください");
+      return;
+    }
+
+    setStatus("メモ更新中...");
+
+    await db.collection("lineMemos").doc(selectedMemoId).update({
+      text,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    setStatus("メモを更新しました");
+    await load();
+
+  } catch (e) {
+    setStatus("メモ更新エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+async function deleteLineMemo(id) {
+  try {
+    if (!confirm("このメモを削除しますか？")) return;
+
+    setStatus("メモ削除中...");
+    await db.collection("lineMemos").doc(id).delete();
+
+    if (selectedMemoId === id) selectedMemoId = null;
+
+    setStatus("メモを削除しました");
+    await load();
+
+  } catch (e) {
+    setStatus("メモ削除エラー：" + e.message);
     console.error(e);
   }
 }
@@ -1284,7 +1480,16 @@ function exportCsv() {
       .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
       .join("\n");
 
-    const csv = csvMain + "\n\nラインストック\n" + csvStock + "\n\n全体メモ\n" + `"${String(appMemoEl.value || "").replace(/"/g, '""')}"`;
+    const memoHeaders = ["メモ書き出し","メモ全文"];
+    const memoRows = lineMemos.map(m => [
+      getMemoTitle(m.text || ""), m.text || ""
+    ]);
+
+    const csvMemo = [memoHeaders, ...memoRows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const csv = csvMain + "\n\nラインストック\n" + csvStock + "\n\nメモ\n" + csvMemo;
 
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -1303,6 +1508,34 @@ function exportCsv() {
     setStatus("CSV出力エラー：" + e.message);
   }
 }
+
+
+function getMemoTitle(text) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "無題メモ";
+
+  let result = "";
+  let width = 0;
+
+  for (const ch of clean) {
+    const w = ch.match(/[ -~]/) ? 1 : 2;
+    if (width + w > 20) break;
+    result += ch;
+    width += w;
+  }
+
+  return result;
+}
+
+function formatMemoDate(value) {
+  const time = getTimeValue(value);
+  if (!time) return "-";
+
+  const d = new Date(time);
+  const year = String(d.getFullYear()).slice(2);
+  return `${d.getMonth() + 1}/${d.getDate()}/${year}`;
+}
+
 
 function formatShortDate(dateStr) {
   if (!dateStr) return "-";
@@ -1344,6 +1577,9 @@ window.saveSelectedReel = saveSelectedReel;
 window.updateDetailSpareFieldsVisibility = updateDetailSpareFieldsVisibility;
 window.saveSelectedLineStock = saveSelectedLineStock;
 window.deleteLineStock = deleteLineStock;
+window.selectLineMemo = selectLineMemo;
+window.saveSelectedLineMemo = saveSelectedLineMemo;
+window.deleteLineMemo = deleteLineMemo;
 
 updateNewSpareFieldsVisibility();
 load();
