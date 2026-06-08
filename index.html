@@ -31,10 +31,12 @@ h2 { font-size: 30px; margin: 48px 0 18px; }
 .section h3 { margin: 0 0 10px; font-size: 20px; }
 
 .section-list { background: #eff6ff; }
-.section-cards { background: #ffffff; }
-.section-form { background: #fffbeb; }
-.section-stock { background: #ecfdf5; }
+.section-stock-list { background: #ecfdf5; }
+.section-detail { background: #ffffff; }
+.section-stock-detail { background: #f0fdf4; }
 .section-memo { background: #f5f3ff; }
+.section-form { background: #fffbeb; }
+.section-stock-form { background: #ecfdf5; }
 
 #status {
   background: white;
@@ -105,6 +107,22 @@ h2 { font-size: 30px; margin: 48px 0 18px; }
   min-width: 100%;
 }
 
+.stock-summary-row {
+  display: grid;
+  grid-template-columns: 1.7fr 0.6fr 0.7fr 0.55fr;
+  gap: 4px;
+  align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid #dcfce7;
+  font-size: 13px;
+}
+
+.stock-summary-row.header {
+  color: #64748b;
+  font-weight: bold;
+  font-size: 11px;
+}
+
 .type-badge {
   display: inline-block;
   min-width: 28px;
@@ -173,14 +191,9 @@ button {
   font-weight: bold;
 }
 
-#cancelBtn,
-#cancelStockBtn {
-  background: #64748b;
-  display: none;
-}
-
-#saveStockBtn { background: #059669; }
-#saveAppMemoBtn { background: #7c3aed; }
+button.secondary { background: #64748b; }
+button.stock-save { background: #059669; }
+button.memo-save { background: #7c3aed; }
 
 ul { padding: 0; }
 
@@ -192,11 +205,6 @@ li {
   border-radius: 14px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.04);
   transition: background 0.25s ease, transform 0.25s ease;
-}
-
-li.highlight {
-  background: #dbeafe;
-  transform: scale(1.01);
 }
 
 .title {
@@ -259,18 +267,17 @@ li.highlight {
 
 .sub-section h4 { margin: 0 0 10px; }
 
-.stock-card {
+.empty-box {
+  background: white;
+  border-radius: 14px;
+  padding: 14px;
+  color: #64748b;
+}
+
+.detail-box {
   background: white;
   border-radius: 14px;
   padding: 12px;
-  margin: 10px 0;
-  border: 1px solid #d1fae5;
-}
-
-.stock-title {
-  font-weight: bold;
-  font-size: 18px;
-  margin-bottom: 4px;
 }
 </style>
 </head>
@@ -283,22 +290,40 @@ li.highlight {
 
 <section class="section section-list">
   <h3>登録リール一覧</h3>
-  <p class="small">リール名は左右スクロールで全文確認できます。タップで詳細へ移動。長押しで並び替え。</p>
+  <p class="small">リール名は左右スクロールで全文確認できます。タップで詳細へ表示。長押しで並び替え。</p>
   <div class="summary" id="summary"></div>
 </section>
 
-<section class="section section-cards">
-  <h3>登録リール</h3>
-  <ul id="list"></ul>
+<section class="section section-stock-list">
+  <h3>ラインストック一覧</h3>
+  <p class="small">タップすると下の詳細/編集エリアに表示します。</p>
+  <div class="summary" id="stockSummary"></div>
+</section>
+
+<section class="section section-detail">
+  <h3>登録リール詳細 / 編集</h3>
+  <div id="reelDetail"></div>
+</section>
+
+<section class="section section-stock-detail">
+  <h3>ラインストック詳細 / 編集</h3>
+  <div id="stockDetail"></div>
+</section>
+
+<section class="section section-memo">
+  <h3>全体メモ</h3>
+  <p class="small">買うもの、次回確認すること、釣行前の注意などを自由に残せます。</p>
+  <textarea id="appMemo" placeholder="自由メモ"></textarea>
+  <button id="saveAppMemoBtn" class="memo-save">全体メモを保存</button>
 </section>
 
 <section class="section section-form">
-  <h3>新規登録 / 編集</h3>
+  <h3>リール新規登録</h3>
 
-  <input id="name" placeholder="リール名">
+  <input id="newName" placeholder="リール名">
 
   <label>リール種類</label>
-  <select id="reelType">
+  <select id="newReelType">
     <option value="EL">電動 / EL</option>
     <option value="BC">両軸 / BC</option>
     <option value="SP">スピニング / SP</option>
@@ -306,88 +331,75 @@ li.highlight {
   </select>
 
   <h4>メインスプール</h4>
-  <input id="mainSpoolSize" placeholder="メインスプールサイズ 例：100 / 4000">
-  <input id="lineSize" type="number" step="0.1" placeholder="糸の太さ 例：1.2">
-  <input id="lineLength" type="number" placeholder="長さ 例：200">
+  <input id="newMainSpoolSize" placeholder="メインスプールサイズ 例：100 / 4000">
+  <input id="newLineSize" type="number" step="0.1" placeholder="糸の太さ 例：1.2">
+  <input id="newLineLength" type="number" placeholder="長さ 例：200">
 
   <label>巻き替え日</label>
-  <input id="spooledAt" type="date">
+  <input id="newSpooledAt" type="date">
 
   <label>最終利用日</label>
-  <input id="usedAt" type="date">
+  <input id="newUsedAt" type="date">
 
   <label>使用回数</label>
-  <input id="usageCount" type="number" min="0" value="1">
+  <input id="newUsageCount" type="number" min="0" value="1">
 
   <label>替えスプール数</label>
-  <select id="spareSpoolCount">
+  <select id="newSpareSpoolCount">
     <option value="0">替えスプールなし</option>
     <option value="1">替えスプール1つ</option>
     <option value="2">替えスプール2つ</option>
   </select>
 
-  <div id="spare1Fields" class="sub-section" style="display:none;">
+  <div id="newSpare1Fields" class="sub-section" style="display:none;">
     <h4>替えスプール①</h4>
 
-    <input id="spare1SpoolSize" placeholder="替えスプール①サイズ 例：100 / 4000">
-    <input id="spare1LineSize" type="number" step="0.1" placeholder="替えスプール①の糸の太さ 例：1.5">
-    <input id="spare1LineLength" type="number" placeholder="替えスプール①の長さ 例：200">
+    <input id="newSpare1SpoolSize" placeholder="替えスプール①サイズ 例：100 / 4000">
+    <input id="newSpare1LineSize" type="number" step="0.1" placeholder="替えスプール①の糸の太さ 例：1.5">
+    <input id="newSpare1LineLength" type="number" placeholder="替えスプール①の長さ 例：200">
 
     <label>替えスプール①巻き替え日</label>
-    <input id="spare1SpooledAt" type="date">
+    <input id="newSpare1SpooledAt" type="date">
 
     <label>替えスプール①最終利用日</label>
-    <input id="spare1UsedAt" type="date">
+    <input id="newSpare1UsedAt" type="date">
 
     <label>替えスプール①使用回数</label>
-    <input id="spare1UsageCount" type="number" min="0" value="0">
+    <input id="newSpare1UsageCount" type="number" min="0" value="0">
   </div>
 
-  <div id="spare2Fields" class="sub-section" style="display:none;">
+  <div id="newSpare2Fields" class="sub-section" style="display:none;">
     <h4>替えスプール②</h4>
 
-    <input id="spare2SpoolSize" placeholder="替えスプール②サイズ 例：100 / 4000">
-    <input id="spare2LineSize" type="number" step="0.1" placeholder="替えスプール②の糸の太さ 例：2.0">
-    <input id="spare2LineLength" type="number" placeholder="替えスプール②の長さ 例：200">
+    <input id="newSpare2SpoolSize" placeholder="替えスプール②サイズ 例：100 / 4000">
+    <input id="newSpare2LineSize" type="number" step="0.1" placeholder="替えスプール②の糸の太さ 例：2.0">
+    <input id="newSpare2LineLength" type="number" placeholder="替えスプール②の長さ 例：200">
 
     <label>替えスプール②巻き替え日</label>
-    <input id="spare2SpooledAt" type="date">
+    <input id="newSpare2SpooledAt" type="date">
 
     <label>替えスプール②最終利用日</label>
-    <input id="spare2UsedAt" type="date">
+    <input id="newSpare2UsedAt" type="date">
 
     <label>替えスプール②使用回数</label>
-    <input id="spare2UsageCount" type="number" min="0" value="0">
+    <input id="newSpare2UsageCount" type="number" min="0" value="0">
   </div>
 
-  <textarea id="memo" placeholder="メモ"></textarea>
+  <textarea id="newMemo" placeholder="メモ"></textarea>
 
-  <button id="saveBtn">新規保存</button>
-  <button id="cancelBtn">編集キャンセル</button>
+  <button id="createReelBtn">リールを新規保存</button>
 </section>
 
-<section class="section section-stock">
-  <h3>ラインストック</h3>
-  <p class="small">巻き替え用に持っているライン在庫を管理できます。</p>
+<section class="section section-stock-form">
+  <h3>ラインストック新規登録</h3>
 
-  <div id="stockList"></div>
+  <input id="newStockName" placeholder="メーカー・商品名 例：PE X8">
+  <input id="newStockSize" type="number" step="0.1" placeholder="号数 例：1.5">
+  <input id="newStockLength" type="number" placeholder="長さ 例：200">
+  <input id="newStockQuantity" type="number" min="0" value="1" placeholder="個数">
+  <textarea id="newStockMemo" placeholder="ストックメモ"></textarea>
 
-  <h4>ラインストック追加 / 編集</h4>
-  <input id="stockName" placeholder="メーカー・商品名 例：PE X8">
-  <input id="stockSize" type="number" step="0.1" placeholder="号数 例：1.5">
-  <input id="stockLength" type="number" placeholder="長さ 例：200">
-  <input id="stockQuantity" type="number" min="0" value="1" placeholder="個数">
-  <textarea id="stockMemo" placeholder="ストックメモ"></textarea>
-
-  <button id="saveStockBtn">ストック保存</button>
-  <button id="cancelStockBtn">ストック編集キャンセル</button>
-</section>
-
-<section class="section section-memo">
-  <h3>全体メモ</h3>
-  <p class="small">買うもの、次回確認すること、釣行前の注意などを自由に残せます。</p>
-  <textarea id="appMemo" placeholder="自由メモ"></textarea>
-  <button id="saveAppMemoBtn">全体メモを保存</button>
+  <button id="createStockBtn" class="stock-save">ラインストックを新規保存</button>
 </section>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -413,8 +425,8 @@ db.settings({
 
 let reels = [];
 let lineStocks = [];
-let editingId = null;
-let editingStockId = null;
+let selectedReelId = null;
+let selectedStockId = null;
 let sortTargetId = null;
 let longPressTimer = null;
 let longPressTriggered = false;
@@ -423,73 +435,57 @@ let normalizedOnce = false;
 const today = new Date().toISOString().slice(0, 10);
 
 const statusEl = document.getElementById("status");
-const nameEl = document.getElementById("name");
-const reelTypeEl = document.getElementById("reelType");
-
-const mainSpoolSizeEl = document.getElementById("mainSpoolSize");
-const lineSizeEl = document.getElementById("lineSize");
-const lineLengthEl = document.getElementById("lineLength");
-const spooledAtEl = document.getElementById("spooledAt");
-const usedAtEl = document.getElementById("usedAt");
-const usageCountEl = document.getElementById("usageCount");
-
-const spareSpoolCountEl = document.getElementById("spareSpoolCount");
-const spare1FieldsEl = document.getElementById("spare1Fields");
-const spare1SpoolSizeEl = document.getElementById("spare1SpoolSize");
-const spare1LineSizeEl = document.getElementById("spare1LineSize");
-const spare1LineLengthEl = document.getElementById("spare1LineLength");
-const spare1SpooledAtEl = document.getElementById("spare1SpooledAt");
-const spare1UsedAtEl = document.getElementById("spare1UsedAt");
-const spare1UsageCountEl = document.getElementById("spare1UsageCount");
-
-const spare2FieldsEl = document.getElementById("spare2Fields");
-const spare2SpoolSizeEl = document.getElementById("spare2SpoolSize");
-const spare2LineSizeEl = document.getElementById("spare2LineSize");
-const spare2LineLengthEl = document.getElementById("spare2LineLength");
-const spare2SpooledAtEl = document.getElementById("spare2SpooledAt");
-const spare2UsedAtEl = document.getElementById("spare2UsedAt");
-const spare2UsageCountEl = document.getElementById("spare2UsageCount");
-
-const memoEl = document.getElementById("memo");
-const saveBtn = document.getElementById("saveBtn");
-const cancelBtn = document.getElementById("cancelBtn");
-const listEl = document.getElementById("list");
 const summaryEl = document.getElementById("summary");
-const csvBackupBtn = document.getElementById("csvBackupBtn");
-
-const stockListEl = document.getElementById("stockList");
-const stockNameEl = document.getElementById("stockName");
-const stockSizeEl = document.getElementById("stockSize");
-const stockLengthEl = document.getElementById("stockLength");
-const stockQuantityEl = document.getElementById("stockQuantity");
-const stockMemoEl = document.getElementById("stockMemo");
-const saveStockBtn = document.getElementById("saveStockBtn");
-const cancelStockBtn = document.getElementById("cancelStockBtn");
+const stockSummaryEl = document.getElementById("stockSummary");
+const reelDetailEl = document.getElementById("reelDetail");
+const stockDetailEl = document.getElementById("stockDetail");
 const appMemoEl = document.getElementById("appMemo");
-const saveAppMemoBtn = document.getElementById("saveAppMemoBtn");
 
-spooledAtEl.value = today;
-usedAtEl.value = today;
-spare1SpooledAtEl.value = today;
-spare1UsedAtEl.value = today;
-spare2SpooledAtEl.value = today;
-spare2UsedAtEl.value = today;
+const newSpareSpoolCountEl = document.getElementById("newSpareSpoolCount");
+const newSpare1FieldsEl = document.getElementById("newSpare1Fields");
+const newSpare2FieldsEl = document.getElementById("newSpare2Fields");
 
-spareSpoolCountEl.addEventListener("change", updateSpareFieldsVisibility);
-cancelBtn.addEventListener("click", clearForm);
-csvBackupBtn.addEventListener("click", exportCsv);
-saveStockBtn.addEventListener("click", saveLineStock);
-cancelStockBtn.addEventListener("click", clearStockForm);
-saveAppMemoBtn.addEventListener("click", saveAppMemo);
+document.getElementById("csvBackupBtn").addEventListener("click", exportCsv);
+document.getElementById("saveAppMemoBtn").addEventListener("click", saveAppMemo);
+document.getElementById("createReelBtn").addEventListener("click", createReel);
+document.getElementById("createStockBtn").addEventListener("click", createLineStock);
+newSpareSpoolCountEl.addEventListener("change", updateNewSpareFieldsVisibility);
+
+setInitialDates();
+
+function setInitialDates() {
+  const ids = [
+    "newSpooledAt", "newUsedAt",
+    "newSpare1SpooledAt", "newSpare1UsedAt",
+    "newSpare2SpooledAt", "newSpare2UsedAt"
+  ];
+
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = today;
+  });
+}
 
 function setStatus(text) {
   statusEl.innerText = text;
 }
 
-function updateSpareFieldsVisibility() {
-  const count = Number(spareSpoolCountEl.value || 0);
-  spare1FieldsEl.style.display = count >= 1 ? "block" : "none";
-  spare2FieldsEl.style.display = count >= 2 ? "block" : "none";
+function updateNewSpareFieldsVisibility() {
+  const count = Number(newSpareSpoolCountEl.value || 0);
+  newSpare1FieldsEl.style.display = count >= 1 ? "block" : "none";
+  newSpare2FieldsEl.style.display = count >= 2 ? "block" : "none";
+}
+
+function updateDetailSpareFieldsVisibility() {
+  const countEl = document.getElementById("detailSpareSpoolCount");
+  if (!countEl) return;
+
+  const count = Number(countEl.value || 0);
+  const spare1 = document.getElementById("detailSpare1Fields");
+  const spare2 = document.getElementById("detailSpare2Fields");
+
+  if (spare1) spare1.style.display = count >= 1 ? "block" : "none";
+  if (spare2) spare2.style.display = count >= 2 ? "block" : "none";
 }
 
 function getSpareCountFromData(d) {
@@ -550,103 +546,6 @@ async function normalizeOrderIfNeeded() {
   setStatus("並び順を整理しました");
 }
 
-function clearForm() {
-  editingId = null;
-  nameEl.value = "";
-  reelTypeEl.value = "EL";
-
-  mainSpoolSizeEl.value = "";
-  lineSizeEl.value = "";
-  lineLengthEl.value = "";
-  spooledAtEl.value = today;
-  usedAtEl.value = today;
-  usageCountEl.value = 1;
-
-  spareSpoolCountEl.value = "0";
-  spare1SpoolSizeEl.value = "";
-  spare1LineSizeEl.value = "";
-  spare1LineLengthEl.value = "";
-  spare1SpooledAtEl.value = today;
-  spare1UsedAtEl.value = today;
-  spare1UsageCountEl.value = 0;
-
-  spare2SpoolSizeEl.value = "";
-  spare2LineSizeEl.value = "";
-  spare2LineLengthEl.value = "";
-  spare2SpooledAtEl.value = today;
-  spare2UsedAtEl.value = today;
-  spare2UsageCountEl.value = 0;
-
-  updateSpareFieldsVisibility();
-
-  memoEl.value = "";
-  saveBtn.innerText = "新規保存";
-  cancelBtn.style.display = "none";
-  setStatus("入力待ち");
-}
-
-saveBtn.addEventListener("click", async function () {
-  try {
-    setStatus("保存中...");
-
-    const spareCount = Number(spareSpoolCountEl.value || 0);
-
-    const data = {
-      name: nameEl.value.trim(),
-      reelType: reelTypeEl.value,
-
-      mainSpoolSize: mainSpoolSizeEl.value,
-      lineSize: lineSizeEl.value,
-      lineLength: lineLengthEl.value,
-      spooledAt: spooledAtEl.value,
-      usedAt: usedAtEl.value,
-      usageCount: Number(usageCountEl.value || 0),
-
-      spareSpoolCount: spareCount,
-      hasSpareSpool: spareCount > 0,
-
-      spare1SpoolSize: spareCount >= 1 ? spare1SpoolSizeEl.value : "",
-      spare1LineSize: spareCount >= 1 ? spare1LineSizeEl.value : "",
-      spare1LineLength: spareCount >= 1 ? spare1LineLengthEl.value : "",
-      spare1SpooledAt: spareCount >= 1 ? spare1SpooledAtEl.value : "",
-      spare1UsedAt: spareCount >= 1 ? spare1UsedAtEl.value : "",
-      spare1UsageCount: spareCount >= 1 ? Number(spare1UsageCountEl.value || 0) : 0,
-
-      spare2SpoolSize: spareCount >= 2 ? spare2SpoolSizeEl.value : "",
-      spare2LineSize: spareCount >= 2 ? spare2LineSizeEl.value : "",
-      spare2LineLength: spareCount >= 2 ? spare2LineLengthEl.value : "",
-      spare2SpooledAt: spareCount >= 2 ? spare2SpooledAtEl.value : "",
-      spare2UsedAt: spareCount >= 2 ? spare2UsedAtEl.value : "",
-      spare2UsageCount: spareCount >= 2 ? Number(spare2UsageCountEl.value || 0) : 0,
-
-      memo: memoEl.value,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    if (!data.name) {
-      setStatus("リール名を入力してください");
-      return;
-    }
-
-    if (editingId) {
-      await db.collection("reels").doc(editingId).update(data);
-      setStatus("更新しました");
-    } else {
-      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      data.order = reels.length;
-      await db.collection("reels").add(data);
-      setStatus("保存しました");
-    }
-
-    clearForm();
-    await load();
-
-  } catch (e) {
-    setStatus("保存エラー：" + e.message);
-    console.error(e);
-  }
-});
-
 async function load() {
   try {
     setStatus("読み込み中...");
@@ -663,10 +562,13 @@ async function load() {
     await normalizeOrderIfNeeded();
     sortReelsStable();
 
-    renderSummary();
-    renderCards();
     await loadLineStocks();
     await loadAppMemo();
+
+    if (selectedReelId && !reels.find(r => r.id === selectedReelId)) selectedReelId = null;
+    if (selectedStockId && !lineStocks.find(s => s.id === selectedStockId)) selectedStockId = null;
+
+    renderAll();
 
     setStatus("読み込み完了");
 
@@ -695,6 +597,13 @@ function migrateLegacySpoolData(d) {
   return copy;
 }
 
+function renderAll() {
+  renderSummary();
+  renderStockSummary();
+  renderReelDetail();
+  renderStockDetail();
+}
+
 function renderSummary() {
   summaryEl.innerHTML = `
     <div class="summary-row header">
@@ -707,6 +616,11 @@ function renderSummary() {
       <div class="summary-cell memo-mark">メモ</div>
     </div>
   `;
+
+  if (reels.length === 0) {
+    summaryEl.innerHTML += `<div class="empty-box">まだリール登録がありません。</div>`;
+    return;
+  }
 
   reels.forEach((d, index) => {
     const hasMemo = d.memo && d.memo.trim().length > 0;
@@ -748,7 +662,7 @@ function renderSummary() {
       >
         <div class="summary-cell"><span class="type-badge type-${type}">${type}</span></div>
         <div class="summary-cell reel-name-cell">
-          <span class="summary-link" onclick="handleSummaryTap('${d.id}')">${escapeHtml(d.name || "-")}</span>
+          <span class="summary-link" onclick="selectReel('${d.id}')">${escapeHtml(d.name || "-")}</span>
         </div>
         <div class="summary-cell center">${escapeHtml(d.lineSize || "-")}</div>
         <div class="summary-cell">${escapeHtml(d.lineLength || "-")}</div>
@@ -760,67 +674,309 @@ function renderSummary() {
   });
 }
 
-function renderCards() {
-  listEl.innerHTML = "";
+function renderStockSummary() {
+  stockSummaryEl.innerHTML = `
+    <div class="stock-summary-row header">
+      <div>商品名</div>
+      <div class="center">号</div>
+      <div class="center">長さ</div>
+      <div class="center">個数</div>
+    </div>
+  `;
 
-  reels.forEach(d => {
-    const count = Number(d.usageCount || 0);
-    const type = d.reelType || "OT";
-    const spareCount = getSpareCountFromData(d);
+  if (lineStocks.length === 0) {
+    stockSummaryEl.innerHTML += `<div class="empty-box">まだラインストック登録がありません。</div>`;
+    return;
+  }
 
-    listEl.innerHTML += `
-      <li data-id="${d.id}" id="card-${d.id}">
-        <div class="title">
-          <span class="type-badge type-${type}">${type}</span>
-          ${escapeHtml(d.name || "")}
-        </div>
-
-        <div class="line-block">
-          <div class="line-label">メインスプール</div>
-          <div>サイズ：${escapeHtml(d.mainSpoolSize || "-")}</div>
-          <div>糸：${escapeHtml(d.lineSize || "-")}号 / ${escapeHtml(d.lineLength || "-")}m</div>
-          <div>巻き替え日：${escapeHtml(d.spooledAt || "-")}</div>
-          <div>最終利用日：${escapeHtml(d.usedAt || "-")}</div>
-          <div>使用回数：${count}回</div>
-        </div>
-
-        ${spareCount >= 1 ? renderSpareBlock(d, 1) : ""}
-        ${spareCount >= 2 ? renderSpareBlock(d, 2) : ""}
-
-        <div class="memo">${escapeHtml(d.memo || "メモなし")}</div>
-
-        <div class="row">
-          <button class="useBtn" onclick="addUsage('${d.id}', 'main', ${count})">メイン＋1回</button>
-          ${spareCount >= 1 ? `<button class="useBtn" onclick="addUsage('${d.id}', 'spare1', ${Number(d.spare1UsageCount || 0)})">替①＋1回</button>` : ""}
-        </div>
-
-        ${spareCount >= 2 ? `
-          <div class="row">
-            <button class="useBtn" onclick="addUsage('${d.id}', 'spare2', ${Number(d.spare2UsageCount || 0)})">替②＋1回</button>
-          </div>
-        ` : ""}
-
-        <div class="row">
-          <button class="editBtn" onclick="editReel('${d.id}')">編集</button>
-          <button class="deleteBtn" onclick="deleteReel('${d.id}')">削除</button>
-        </div>
-      </li>
+  lineStocks.forEach(s => {
+    stockSummaryEl.innerHTML += `
+      <div class="stock-summary-row" onclick="selectLineStock('${s.id}')">
+        <div class="summary-cell">${escapeHtml(s.name || "-")}</div>
+        <div class="center">${escapeHtml(s.size || "-")}</div>
+        <div class="center">${escapeHtml(s.length || "-")}</div>
+        <div class="center">${Number(s.quantity || 0)}</div>
+      </div>
     `;
   });
 }
 
-function renderSpareBlock(d, num) {
-  const prefix = `spare${num}`;
-  return `
-    <div class="line-block">
-      <div class="line-label">替えスプール${num === 1 ? "①" : "②"}</div>
-      <div>サイズ：${escapeHtml(d[`${prefix}SpoolSize`] || "-")}</div>
-      <div>糸：${escapeHtml(d[`${prefix}LineSize`] || "-")}号 / ${escapeHtml(d[`${prefix}LineLength`] || "-")}m</div>
-      <div>巻き替え日：${escapeHtml(d[`${prefix}SpooledAt`] || "-")}</div>
-      <div>最終利用日：${escapeHtml(d[`${prefix}UsedAt`] || "-")}</div>
-      <div>使用回数：${Number(d[`${prefix}UsageCount`] || 0)}回</div>
+function selectReel(id) {
+  if (longPressTriggered) {
+    longPressTriggered = false;
+    return;
+  }
+
+  if (sortTargetId === id) return;
+
+  selectedReelId = id;
+  renderReelDetail();
+
+  document.querySelector(".section-detail").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function selectLineStock(id) {
+  selectedStockId = id;
+  renderStockDetail();
+
+  document.querySelector(".section-stock-detail").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function renderReelDetail() {
+  const d = reels.find(x => x.id === selectedReelId);
+
+  if (!d) {
+    reelDetailEl.innerHTML = `<div class="empty-box">一覧からリールを選択すると詳細と編集フォームが表示されます。</div>`;
+    return;
+  }
+
+  const type = d.reelType || "OT";
+  const spareCount = getSpareCountFromData(d);
+
+  reelDetailEl.innerHTML = `
+    <div class="detail-box">
+      <div class="title">
+        <span class="type-badge type-${type}">${type}</span>
+        ${escapeHtml(d.name || "")}
+      </div>
+
+      <input id="detailName" placeholder="リール名" value="${escapeAttr(d.name || "")}">
+
+      <label>リール種類</label>
+      <select id="detailReelType">
+        ${typeOption("EL", "電動 / EL", type)}
+        ${typeOption("BC", "両軸 / BC", type)}
+        ${typeOption("SP", "スピニング / SP", type)}
+        ${typeOption("OT", "その他 / OT", type)}
+      </select>
+
+      <h4>メインスプール</h4>
+      <input id="detailMainSpoolSize" placeholder="メインスプールサイズ" value="${escapeAttr(d.mainSpoolSize || "")}">
+      <input id="detailLineSize" type="number" step="0.1" placeholder="糸の太さ" value="${escapeAttr(d.lineSize || "")}">
+      <input id="detailLineLength" type="number" placeholder="長さ" value="${escapeAttr(d.lineLength || "")}">
+
+      <label>巻き替え日</label>
+      <input id="detailSpooledAt" type="date" value="${escapeAttr(d.spooledAt || today)}">
+
+      <label>最終利用日</label>
+      <input id="detailUsedAt" type="date" value="${escapeAttr(d.usedAt || today)}">
+
+      <label>使用回数</label>
+      <input id="detailUsageCount" type="number" min="0" value="${Number(d.usageCount || 0)}">
+
+      <label>替えスプール数</label>
+      <select id="detailSpareSpoolCount" onchange="updateDetailSpareFieldsVisibility()">
+        <option value="0" ${spareCount === 0 ? "selected" : ""}>替えスプールなし</option>
+        <option value="1" ${spareCount === 1 ? "selected" : ""}>替えスプール1つ</option>
+        <option value="2" ${spareCount === 2 ? "selected" : ""}>替えスプール2つ</option>
+      </select>
+
+      <div id="detailSpare1Fields" class="sub-section" style="display:${spareCount >= 1 ? "block" : "none"};">
+        <h4>替えスプール①</h4>
+        <input id="detailSpare1SpoolSize" placeholder="替えスプール①サイズ" value="${escapeAttr(d.spare1SpoolSize || "")}">
+        <input id="detailSpare1LineSize" type="number" step="0.1" placeholder="替えスプール①の糸の太さ" value="${escapeAttr(d.spare1LineSize || d.spareLineSize || "")}">
+        <input id="detailSpare1LineLength" type="number" placeholder="替えスプール①の長さ" value="${escapeAttr(d.spare1LineLength || d.spareLineLength || "")}">
+
+        <label>替えスプール①巻き替え日</label>
+        <input id="detailSpare1SpooledAt" type="date" value="${escapeAttr(d.spare1SpooledAt || d.spareSpooledAt || today)}">
+
+        <label>替えスプール①最終利用日</label>
+        <input id="detailSpare1UsedAt" type="date" value="${escapeAttr(d.spare1UsedAt || d.spareUsedAt || today)}">
+
+        <label>替えスプール①使用回数</label>
+        <input id="detailSpare1UsageCount" type="number" min="0" value="${Number(d.spare1UsageCount ?? d.spareUsageCount ?? 0)}">
+      </div>
+
+      <div id="detailSpare2Fields" class="sub-section" style="display:${spareCount >= 2 ? "block" : "none"};">
+        <h4>替えスプール②</h4>
+        <input id="detailSpare2SpoolSize" placeholder="替えスプール②サイズ" value="${escapeAttr(d.spare2SpoolSize || "")}">
+        <input id="detailSpare2LineSize" type="number" step="0.1" placeholder="替えスプール②の糸の太さ" value="${escapeAttr(d.spare2LineSize || "")}">
+        <input id="detailSpare2LineLength" type="number" placeholder="替えスプール②の長さ" value="${escapeAttr(d.spare2LineLength || "")}">
+
+        <label>替えスプール②巻き替え日</label>
+        <input id="detailSpare2SpooledAt" type="date" value="${escapeAttr(d.spare2SpooledAt || today)}">
+
+        <label>替えスプール②最終利用日</label>
+        <input id="detailSpare2UsedAt" type="date" value="${escapeAttr(d.spare2UsedAt || today)}">
+
+        <label>替えスプール②使用回数</label>
+        <input id="detailSpare2UsageCount" type="number" min="0" value="${Number(d.spare2UsageCount || 0)}">
+      </div>
+
+      <textarea id="detailMemo" placeholder="メモ">${escapeHtml(d.memo || "")}</textarea>
+
+      <div class="row">
+        <button class="useBtn" onclick="addUsage('${d.id}', 'main', ${Number(d.usageCount || 0)})">メイン＋1回</button>
+        ${spareCount >= 1 ? `<button class="useBtn" onclick="addUsage('${d.id}', 'spare1', ${Number(d.spare1UsageCount || 0)})">替①＋1回</button>` : ""}
+      </div>
+
+      ${spareCount >= 2 ? `
+        <div class="row">
+          <button class="useBtn" onclick="addUsage('${d.id}', 'spare2', ${Number(d.spare2UsageCount || 0)})">替②＋1回</button>
+        </div>
+      ` : ""}
+
+      <div class="row">
+        <button class="editBtn" onclick="saveSelectedReel()">編集内容を保存</button>
+        <button class="deleteBtn" onclick="deleteReel('${d.id}')">削除</button>
+      </div>
     </div>
   `;
+}
+
+function typeOption(value, label, current) {
+  return `<option value="${value}" ${value === current ? "selected" : ""}>${label}</option>`;
+}
+
+async function saveSelectedReel() {
+  try {
+    if (!selectedReelId) return;
+
+    setStatus("リール更新中...");
+
+    const spareCount = Number(document.getElementById("detailSpareSpoolCount").value || 0);
+
+    const data = {
+      name: document.getElementById("detailName").value.trim(),
+      reelType: document.getElementById("detailReelType").value,
+
+      mainSpoolSize: document.getElementById("detailMainSpoolSize").value,
+      lineSize: document.getElementById("detailLineSize").value,
+      lineLength: document.getElementById("detailLineLength").value,
+      spooledAt: document.getElementById("detailSpooledAt").value,
+      usedAt: document.getElementById("detailUsedAt").value,
+      usageCount: Number(document.getElementById("detailUsageCount").value || 0),
+
+      spareSpoolCount: spareCount,
+      hasSpareSpool: spareCount > 0,
+
+      spare1SpoolSize: spareCount >= 1 ? document.getElementById("detailSpare1SpoolSize").value : "",
+      spare1LineSize: spareCount >= 1 ? document.getElementById("detailSpare1LineSize").value : "",
+      spare1LineLength: spareCount >= 1 ? document.getElementById("detailSpare1LineLength").value : "",
+      spare1SpooledAt: spareCount >= 1 ? document.getElementById("detailSpare1SpooledAt").value : "",
+      spare1UsedAt: spareCount >= 1 ? document.getElementById("detailSpare1UsedAt").value : "",
+      spare1UsageCount: spareCount >= 1 ? Number(document.getElementById("detailSpare1UsageCount").value || 0) : 0,
+
+      spare2SpoolSize: spareCount >= 2 ? document.getElementById("detailSpare2SpoolSize").value : "",
+      spare2LineSize: spareCount >= 2 ? document.getElementById("detailSpare2LineSize").value : "",
+      spare2LineLength: spareCount >= 2 ? document.getElementById("detailSpare2LineLength").value : "",
+      spare2SpooledAt: spareCount >= 2 ? document.getElementById("detailSpare2SpooledAt").value : "",
+      spare2UsedAt: spareCount >= 2 ? document.getElementById("detailSpare2UsedAt").value : "",
+      spare2UsageCount: spareCount >= 2 ? Number(document.getElementById("detailSpare2UsageCount").value || 0) : 0,
+
+      memo: document.getElementById("detailMemo").value,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!data.name) {
+      setStatus("リール名を入力してください");
+      return;
+    }
+
+    await db.collection("reels").doc(selectedReelId).update(data);
+    setStatus("リールを更新しました");
+    await load();
+
+  } catch (e) {
+    setStatus("リール更新エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+function collectNewReelData() {
+  const spareCount = Number(document.getElementById("newSpareSpoolCount").value || 0);
+
+  return {
+    name: document.getElementById("newName").value.trim(),
+    reelType: document.getElementById("newReelType").value,
+
+    mainSpoolSize: document.getElementById("newMainSpoolSize").value,
+    lineSize: document.getElementById("newLineSize").value,
+    lineLength: document.getElementById("newLineLength").value,
+    spooledAt: document.getElementById("newSpooledAt").value,
+    usedAt: document.getElementById("newUsedAt").value,
+    usageCount: Number(document.getElementById("newUsageCount").value || 0),
+
+    spareSpoolCount: spareCount,
+    hasSpareSpool: spareCount > 0,
+
+    spare1SpoolSize: spareCount >= 1 ? document.getElementById("newSpare1SpoolSize").value : "",
+    spare1LineSize: spareCount >= 1 ? document.getElementById("newSpare1LineSize").value : "",
+    spare1LineLength: spareCount >= 1 ? document.getElementById("newSpare1LineLength").value : "",
+    spare1SpooledAt: spareCount >= 1 ? document.getElementById("newSpare1SpooledAt").value : "",
+    spare1UsedAt: spareCount >= 1 ? document.getElementById("newSpare1UsedAt").value : "",
+    spare1UsageCount: spareCount >= 1 ? Number(document.getElementById("newSpare1UsageCount").value || 0) : 0,
+
+    spare2SpoolSize: spareCount >= 2 ? document.getElementById("newSpare2SpoolSize").value : "",
+    spare2LineSize: spareCount >= 2 ? document.getElementById("newSpare2LineSize").value : "",
+    spare2LineLength: spareCount >= 2 ? document.getElementById("newSpare2LineLength").value : "",
+    spare2SpooledAt: spareCount >= 2 ? document.getElementById("newSpare2SpooledAt").value : "",
+    spare2UsedAt: spareCount >= 2 ? document.getElementById("newSpare2UsedAt").value : "",
+    spare2UsageCount: spareCount >= 2 ? Number(document.getElementById("newSpare2UsageCount").value || 0) : 0,
+
+    memo: document.getElementById("newMemo").value,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    order: reels.length
+  };
+}
+
+async function createReel() {
+  try {
+    setStatus("リール保存中...");
+
+    const data = collectNewReelData();
+
+    if (!data.name) {
+      setStatus("リール名を入力してください");
+      return;
+    }
+
+    await db.collection("reels").add(data);
+    setStatus("リールを保存しました");
+
+    clearNewReelForm();
+    await load();
+
+  } catch (e) {
+    setStatus("リール保存エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+function clearNewReelForm() {
+  document.getElementById("newName").value = "";
+  document.getElementById("newReelType").value = "EL";
+  document.getElementById("newMainSpoolSize").value = "";
+  document.getElementById("newLineSize").value = "";
+  document.getElementById("newLineLength").value = "";
+  document.getElementById("newSpooledAt").value = today;
+  document.getElementById("newUsedAt").value = today;
+  document.getElementById("newUsageCount").value = 1;
+  document.getElementById("newSpareSpoolCount").value = "0";
+
+  document.getElementById("newSpare1SpoolSize").value = "";
+  document.getElementById("newSpare1LineSize").value = "";
+  document.getElementById("newSpare1LineLength").value = "";
+  document.getElementById("newSpare1SpooledAt").value = today;
+  document.getElementById("newSpare1UsedAt").value = today;
+  document.getElementById("newSpare1UsageCount").value = 0;
+
+  document.getElementById("newSpare2SpoolSize").value = "";
+  document.getElementById("newSpare2LineSize").value = "";
+  document.getElementById("newSpare2LineLength").value = "";
+  document.getElementById("newSpare2SpooledAt").value = today;
+  document.getElementById("newSpare2UsedAt").value = today;
+  document.getElementById("newSpare2UsageCount").value = 0;
+
+  document.getElementById("newMemo").value = "";
+  updateNewSpareFieldsVisibility();
 }
 
 function startLongPress(id) {
@@ -845,17 +1001,6 @@ function cancelLongPress() {
   clearTimeout(longPressTimer);
 }
 
-function handleSummaryTap(id) {
-  if (longPressTriggered) {
-    longPressTriggered = false;
-    return;
-  }
-
-  if (sortTargetId === id) return;
-
-  scrollToReel(id);
-}
-
 async function moveReel(id, direction) {
   try {
     const index = reels.findIndex(r => r.id === id);
@@ -873,7 +1018,6 @@ async function moveReel(id, direction) {
 
     sortTargetId = id;
     renderSummary();
-    renderCards();
 
     setStatus("並び順を保存しました");
 
@@ -928,69 +1072,14 @@ async function addUsage(id, type, count) {
   }
 }
 
-function editReel(id) {
-  try {
-    const d = reels.find(x => x.id === id);
-
-    if (!d) {
-      setStatus("編集対象が見つかりません");
-      return;
-    }
-
-    editingId = id;
-
-    nameEl.value = d.name || "";
-    reelTypeEl.value = d.reelType || "OT";
-
-    mainSpoolSizeEl.value = d.mainSpoolSize || "";
-    lineSizeEl.value = d.lineSize || "";
-    lineLengthEl.value = d.lineLength || "";
-    spooledAtEl.value = d.spooledAt || today;
-    usedAtEl.value = d.usedAt || today;
-    usageCountEl.value = Number(d.usageCount || 0);
-
-    const spareCount = getSpareCountFromData(d);
-    spareSpoolCountEl.value = String(spareCount);
-
-    spare1SpoolSizeEl.value = d.spare1SpoolSize || "";
-    spare1LineSizeEl.value = d.spare1LineSize || d.spareLineSize || "";
-    spare1LineLengthEl.value = d.spare1LineLength || d.spareLineLength || "";
-    spare1SpooledAtEl.value = d.spare1SpooledAt || d.spareSpooledAt || today;
-    spare1UsedAtEl.value = d.spare1UsedAt || d.spareUsedAt || today;
-    spare1UsageCountEl.value = Number(d.spare1UsageCount ?? d.spareUsageCount ?? 0);
-
-    spare2SpoolSizeEl.value = d.spare2SpoolSize || "";
-    spare2LineSizeEl.value = d.spare2LineSize || "";
-    spare2LineLengthEl.value = d.spare2LineLength || "";
-    spare2SpooledAtEl.value = d.spare2SpooledAt || today;
-    spare2UsedAtEl.value = d.spare2UsedAt || today;
-    spare2UsageCountEl.value = Number(d.spare2UsageCount || 0);
-
-    updateSpareFieldsVisibility();
-
-    memoEl.value = d.memo || "";
-
-    saveBtn.innerText = "編集内容を保存";
-    cancelBtn.style.display = "block";
-
-    setStatus("編集中：" + (d.name || ""));
-    window.scrollTo({
-      top: document.body.scrollHeight,
-      behavior: "smooth"
-    });
-
-  } catch (e) {
-    setStatus("編集エラー：" + e.message);
-    console.error(e);
-  }
-}
-
 async function deleteReel(id) {
   try {
     if (!confirm("このリールを丸ごと削除しますか？")) return;
 
     setStatus("削除中...");
     await db.collection("reels").doc(id).delete();
+
+    if (selectedReelId === id) selectedReelId = null;
 
     setStatus("削除しました");
     await load();
@@ -999,22 +1088,6 @@ async function deleteReel(id) {
     setStatus("削除エラー：" + e.message);
     console.error(e);
   }
-}
-
-function scrollToReel(id) {
-  const el = document.getElementById("card-" + id);
-  if (!el) return;
-
-  el.scrollIntoView({
-    behavior: "smooth",
-    block: "center"
-  });
-
-  el.classList.add("highlight");
-
-  setTimeout(() => {
-    el.classList.remove("highlight");
-  }, 1000);
 }
 
 async function loadLineStocks() {
@@ -1030,45 +1103,44 @@ async function loadLineStocks() {
     const bTime = getTimeValue(b.createdAt) || 0;
     return aTime - bTime;
   });
-
-  renderLineStocks();
 }
 
-function renderLineStocks() {
-  stockListEl.innerHTML = "";
+function renderStockDetail() {
+  const s = lineStocks.find(x => x.id === selectedStockId);
 
-  if (lineStocks.length === 0) {
-    stockListEl.innerHTML = `<div class="small">まだストック登録がありません。</div>`;
+  if (!s) {
+    stockDetailEl.innerHTML = `<div class="empty-box">一覧からラインストックを選択すると詳細と編集フォームが表示されます。</div>`;
     return;
   }
 
-  lineStocks.forEach(s => {
-    stockListEl.innerHTML += `
-      <div class="stock-card">
-        <div class="stock-title">${escapeHtml(s.name || "-")}</div>
-        <div>号数：${escapeHtml(s.size || "-")}号</div>
-        <div>長さ：${escapeHtml(s.length || "-")}m</div>
-        <div>個数：${Number(s.quantity || 0)}個</div>
-        <div class="memo">${escapeHtml(s.memo || "メモなし")}</div>
-        <div class="row">
-          <button class="editBtn" onclick="editLineStock('${s.id}')">編集</button>
-          <button class="deleteBtn" onclick="deleteLineStock('${s.id}')">削除</button>
-        </div>
+  stockDetailEl.innerHTML = `
+    <div class="detail-box">
+      <input id="detailStockName" placeholder="メーカー・商品名" value="${escapeAttr(s.name || "")}">
+      <input id="detailStockSize" type="number" step="0.1" placeholder="号数" value="${escapeAttr(s.size || "")}">
+      <input id="detailStockLength" type="number" placeholder="長さ" value="${escapeAttr(s.length || "")}">
+      <input id="detailStockQuantity" type="number" min="0" placeholder="個数" value="${Number(s.quantity || 0)}">
+      <textarea id="detailStockMemo" placeholder="ストックメモ">${escapeHtml(s.memo || "")}</textarea>
+
+      <div class="row">
+        <button class="editBtn" onclick="saveSelectedLineStock()">編集内容を保存</button>
+        <button class="deleteBtn" onclick="deleteLineStock('${s.id}')">削除</button>
       </div>
-    `;
-  });
+    </div>
+  `;
 }
 
-async function saveLineStock() {
+async function saveSelectedLineStock() {
   try {
-    setStatus("ストック保存中...");
+    if (!selectedStockId) return;
+
+    setStatus("ストック更新中...");
 
     const data = {
-      name: stockNameEl.value.trim(),
-      size: stockSizeEl.value,
-      length: stockLengthEl.value,
-      quantity: Number(stockQuantityEl.value || 0),
-      memo: stockMemoEl.value,
+      name: document.getElementById("detailStockName").value.trim(),
+      size: document.getElementById("detailStockSize").value,
+      length: document.getElementById("detailStockLength").value,
+      quantity: Number(document.getElementById("detailStockQuantity").value || 0),
+      memo: document.getElementById("detailStockMemo").value,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
@@ -1077,17 +1149,40 @@ async function saveLineStock() {
       return;
     }
 
-    if (editingStockId) {
-      await db.collection("lineStocks").doc(editingStockId).update(data);
-      setStatus("ストックを更新しました");
-    } else {
-      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      await db.collection("lineStocks").add(data);
-      setStatus("ストックを保存しました");
+    await db.collection("lineStocks").doc(selectedStockId).update(data);
+    setStatus("ストックを更新しました");
+    await load();
+
+  } catch (e) {
+    setStatus("ストック更新エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+async function createLineStock() {
+  try {
+    setStatus("ストック保存中...");
+
+    const data = {
+      name: document.getElementById("newStockName").value.trim(),
+      size: document.getElementById("newStockSize").value,
+      length: document.getElementById("newStockLength").value,
+      quantity: Number(document.getElementById("newStockQuantity").value || 0),
+      memo: document.getElementById("newStockMemo").value,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!data.name) {
+      setStatus("ストックの商品名を入力してください");
+      return;
     }
 
-    clearStockForm();
-    await loadLineStocks();
+    await db.collection("lineStocks").add(data);
+    setStatus("ストックを保存しました");
+
+    clearNewStockForm();
+    await load();
 
   } catch (e) {
     setStatus("ストック保存エラー：" + e.message);
@@ -1095,25 +1190,12 @@ async function saveLineStock() {
   }
 }
 
-function editLineStock(id) {
-  const s = lineStocks.find(x => x.id === id);
-  if (!s) return;
-
-  editingStockId = id;
-  stockNameEl.value = s.name || "";
-  stockSizeEl.value = s.size || "";
-  stockLengthEl.value = s.length || "";
-  stockQuantityEl.value = Number(s.quantity || 0);
-  stockMemoEl.value = s.memo || "";
-
-  saveStockBtn.innerText = "ストック編集内容を保存";
-  cancelStockBtn.style.display = "block";
-  setStatus("ストック編集中：" + (s.name || ""));
-
-  window.scrollTo({
-    top: document.body.scrollHeight,
-    behavior: "smooth"
-  });
+function clearNewStockForm() {
+  document.getElementById("newStockName").value = "";
+  document.getElementById("newStockSize").value = "";
+  document.getElementById("newStockLength").value = "";
+  document.getElementById("newStockQuantity").value = 1;
+  document.getElementById("newStockMemo").value = "";
 }
 
 async function deleteLineStock(id) {
@@ -1122,24 +1204,16 @@ async function deleteLineStock(id) {
 
     setStatus("ストック削除中...");
     await db.collection("lineStocks").doc(id).delete();
+
+    if (selectedStockId === id) selectedStockId = null;
+
     setStatus("ストックを削除しました");
-    await loadLineStocks();
+    await load();
 
   } catch (e) {
     setStatus("ストック削除エラー：" + e.message);
     console.error(e);
   }
-}
-
-function clearStockForm() {
-  editingStockId = null;
-  stockNameEl.value = "";
-  stockSizeEl.value = "";
-  stockLengthEl.value = "";
-  stockQuantityEl.value = 1;
-  stockMemoEl.value = "";
-  saveStockBtn.innerText = "ストック保存";
-  cancelStockBtn.style.display = "none";
 }
 
 async function loadAppMemo() {
@@ -1249,18 +1323,23 @@ function escapeHtml(str) {
   });
 }
 
-window.addUsage = addUsage;
-window.editReel = editReel;
-window.deleteReel = deleteReel;
-window.scrollToReel = scrollToReel;
+function escapeAttr(str) {
+  return escapeHtml(str).replace(/"/g, "&quot;");
+}
+
+window.selectReel = selectReel;
+window.selectLineStock = selectLineStock;
 window.startLongPress = startLongPress;
 window.cancelLongPress = cancelLongPress;
-window.handleSummaryTap = handleSummaryTap;
 window.moveReel = moveReel;
-window.editLineStock = editLineStock;
+window.addUsage = addUsage;
+window.deleteReel = deleteReel;
+window.saveSelectedReel = saveSelectedReel;
+window.updateDetailSpareFieldsVisibility = updateDetailSpareFieldsVisibility;
+window.saveSelectedLineStock = saveSelectedLineStock;
 window.deleteLineStock = deleteLineStock;
 
-updateSpareFieldsVisibility();
+updateNewSpareFieldsVisibility();
 load();
 </script>
 
