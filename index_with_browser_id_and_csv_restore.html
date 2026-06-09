@@ -1,0 +1,1951 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>リール糸管理</title>
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="リール管理">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 16px;
+  background: #f5f7fb;
+  color: #111827;
+}
+
+h2 { font-size: 30px; margin: 48px 0 18px; }
+
+.section {
+  border-radius: 18px;
+  padding: 14px;
+  margin: 18px 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.section h3 { margin: 0 0 10px; font-size: 20px; }
+
+.section-list { background: #eff6ff; }
+.section-stock-list { background: #ecfdf5; }
+.section-detail { background: #ffffff; }
+.section-stock-detail { background: #f0fdf4; }
+.section-memo { background: #f5f3ff; }
+.section-form { background: #fffbeb; }
+.section-stock-form { background: #ecfdf5; }
+
+#status {
+  background: white;
+  padding: 12px;
+  border-radius: 14px;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+#csvBackupBtn {
+  background: #0f766e;
+}
+
+#csvRestoreBtn {
+  background: #0891b2;
+}
+
+#migrateSharedDataBtn {
+  background: #9333ea;
+}
+
+#copyUserIdBtn,
+#changeUserIdBtn {
+  background: #475569;
+}
+
+#userIdDisplay {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #ffffff;
+}
+
+.summary {
+  background: white;
+  border-radius: 14px;
+  padding: 8px;
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 42px 1.7fr 0.42fr 0.62fr 0.9fr 0.5fr 0.5fr;
+  gap: 4px;
+  align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 13px;
+}
+
+.summary-row.header {
+  color: #64748b;
+  font-weight: bold;
+  font-size: 11px;
+}
+
+.summary-row.sorting {
+  grid-template-columns: 1fr 44px 44px;
+  background: #dbeafe;
+  border-radius: 10px;
+  padding: 10px 8px;
+  margin: 4px 0;
+}
+
+.summary-cell {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.reel-name-cell {
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+.reel-name-cell::-webkit-scrollbar { display: none; }
+
+.summary-link {
+  color: #111827;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  display: inline-block;
+  min-width: 100%;
+}
+
+.stock-summary-row {
+  display: grid;
+  grid-template-columns: 1.7fr 0.6fr 0.7fr 0.55fr;
+  gap: 4px;
+  align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid #dcfce7;
+  font-size: 13px;
+}
+
+.stock-summary-row.header {
+  color: #64748b;
+  font-weight: bold;
+  font-size: 11px;
+}
+
+.memo-summary-row {
+  display: grid;
+  grid-template-columns: 1fr 0.8fr;
+  gap: 4px;
+  align-items: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid #ddd6fe;
+  font-size: 13px;
+}
+
+.memo-summary-row.header {
+  color: #64748b;
+  font-weight: bold;
+  font-size: 11px;
+}
+
+.memo-title-link {
+  color: #111827;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.memo-date {
+  text-align: right;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.type-badge {
+  display: inline-block;
+  min-width: 28px;
+  padding: 3px 4px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  color: white;
+}
+
+.type-EL { background: #2563eb; }
+.type-BC { background: #f97316; }
+.type-SP { background: #16a34a; }
+.type-OT { background: #64748b; }
+
+.sort-name { font-weight: bold; font-size: 15px; }
+.center { text-align: center; }
+
+.flag-cell,
+.memo-mark {
+  text-align: center;
+  font-weight: bold;
+}
+
+.sort-btn {
+  width: 40px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  border-radius: 10px;
+  font-size: 20px;
+  line-height: 1;
+  background: #2563eb;
+}
+
+.sort-btn:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+}
+
+input, textarea, button, select {
+  font-size: 18px;
+  padding: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  border: 1px solid #ddd;
+}
+
+input[type="date"] {
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+textarea { min-height: 90px; }
+
+button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  font-weight: bold;
+}
+
+button.secondary { background: #64748b; }
+button.stock-save { background: #059669; }
+button.memo-save { background: #7c3aed; }
+
+ul { padding: 0; }
+
+li {
+  list-style: none;
+  background: #f8fafc;
+  margin: 12px 0;
+  padding: 14px;
+  border-radius: 14px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+  transition: background 0.25s ease, transform 0.25s ease;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.line-block {
+  background: white;
+  border-radius: 12px;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #e5e7eb;
+}
+
+.line-label {
+  font-weight: bold;
+  color: #2563eb;
+  margin-bottom: 4px;
+}
+
+.memo {
+  background: #f1f5f9;
+  padding: 10px;
+  border-radius: 10px;
+  margin-top: 8px;
+  white-space: pre-wrap;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.row button {
+  flex: 1;
+  font-size: 15px;
+  padding: 10px;
+}
+
+.useBtn { background: #10b981; }
+.editBtn { background: #f59e0b; }
+.deleteBtn { background: #ef4444; }
+
+.small {
+  color: #64748b;
+  font-size: 13px;
+  margin: 4px 0 12px;
+}
+
+.sub-section {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.sub-section h4 { margin: 0 0 10px; }
+
+.empty-box {
+  background: white;
+  border-radius: 14px;
+  padding: 14px;
+  color: #64748b;
+}
+
+.detail-box {
+  background: white;
+  border-radius: 14px;
+  padding: 12px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>リール糸管理</h2>
+<div id="status">読み込み中...</div>
+
+
+<section class="section section-list">
+  <h3>登録リール一覧</h3>
+  <p class="small">リール名は左右スクロールで全文確認できます。タップで詳細へ表示。長押しで並び替え。</p>
+  <div class="summary" id="summary"></div>
+</section>
+
+<section class="section section-stock-list">
+  <h3>ラインストック一覧</h3>
+  <p class="small">タップすると下の詳細/編集エリアに表示します。</p>
+  <div class="summary" id="stockSummary"></div>
+</section>
+
+<section class="section section-memo-list">
+  <h3>メモ一覧</h3>
+  <p class="small">メモの書き出し10文字程度を表示します。タップすると下の詳細/編集エリアに表示します。</p>
+  <div class="summary" id="memoSummary"></div>
+</section>
+
+<section class="section section-detail">
+  <h3>登録リール詳細 / 編集</h3>
+  <div id="reelDetail"></div>
+</section>
+
+<section class="section section-stock-detail">
+  <h3>ラインストック詳細 / 編集</h3>
+  <div id="stockDetail"></div>
+</section>
+
+<section class="section section-memo">
+  <h3>メモ詳細 / 編集</h3>
+  <div id="memoDetail"></div>
+</section>
+
+<section class="section section-form">
+  <h3>リール新規登録</h3>
+
+  <input id="newName" placeholder="リール名">
+
+  <label>リール種類</label>
+  <select id="newReelType">
+    <option value="EL">電動 / EL</option>
+    <option value="BC">両軸 / BC</option>
+    <option value="SP">スピニング / SP</option>
+    <option value="OT">その他 / OT</option>
+  </select>
+
+  <h4>メインスプール</h4>
+  <input id="newMainSpoolSize" placeholder="メインスプールサイズ 例：100 / 4000">
+  <input id="newLineSize" type="number" step="0.1" placeholder="糸の太さ 例：1.2">
+  <input id="newLineLength" type="number" placeholder="長さ 例：200">
+
+  <label>巻き替え日</label>
+  <input id="newSpooledAt" type="date">
+
+  <label>最終利用日</label>
+  <input id="newUsedAt" type="date">
+
+  <label>使用回数</label>
+  <input id="newUsageCount" type="number" min="0" value="1">
+
+  <label>替えスプール数</label>
+  <select id="newSpareSpoolCount">
+    <option value="0">替えスプールなし</option>
+    <option value="1">替えスプール1つ</option>
+    <option value="2">替えスプール2つ</option>
+  </select>
+
+  <div id="newSpare1Fields" class="sub-section" style="display:none;">
+    <h4>替えスプール①</h4>
+
+    <input id="newSpare1SpoolSize" placeholder="替えスプール①サイズ 例：100 / 4000">
+    <input id="newSpare1LineSize" type="number" step="0.1" placeholder="替えスプール①の糸の太さ 例：1.5">
+    <input id="newSpare1LineLength" type="number" placeholder="替えスプール①の長さ 例：200">
+
+    <label>替えスプール①巻き替え日</label>
+    <input id="newSpare1SpooledAt" type="date">
+
+    <label>替えスプール①最終利用日</label>
+    <input id="newSpare1UsedAt" type="date">
+
+    <label>替えスプール①使用回数</label>
+    <input id="newSpare1UsageCount" type="number" min="0" value="0">
+  </div>
+
+  <div id="newSpare2Fields" class="sub-section" style="display:none;">
+    <h4>替えスプール②</h4>
+
+    <input id="newSpare2SpoolSize" placeholder="替えスプール②サイズ 例：100 / 4000">
+    <input id="newSpare2LineSize" type="number" step="0.1" placeholder="替えスプール②の糸の太さ 例：2.0">
+    <input id="newSpare2LineLength" type="number" placeholder="替えスプール②の長さ 例：200">
+
+    <label>替えスプール②巻き替え日</label>
+    <input id="newSpare2SpooledAt" type="date">
+
+    <label>替えスプール②最終利用日</label>
+    <input id="newSpare2UsedAt" type="date">
+
+    <label>替えスプール②使用回数</label>
+    <input id="newSpare2UsageCount" type="number" min="0" value="0">
+  </div>
+
+  <textarea id="newMemo" placeholder="メモ"></textarea>
+
+  <button id="createReelBtn">リールを新規保存</button>
+</section>
+
+<section class="section section-stock-form">
+  <h3>ラインストック新規登録</h3>
+
+  <input id="newStockName" placeholder="メーカー・商品名 例：PE X8">
+  <input id="newStockSize" type="number" step="0.1" placeholder="号数 例：1.5">
+  <input id="newStockLength" type="number" placeholder="長さ 例：200">
+  <input id="newStockQuantity" type="number" min="0" value="1" placeholder="個数">
+  <textarea id="newStockMemo" placeholder="ストックメモ"></textarea>
+
+  <button id="createStockBtn" class="stock-save">ラインストックを新規保存</button>
+</section>
+
+
+<section class="section section-memo-form">
+  <h3>メモ新規登録</h3>
+  <p class="small">釣具の買い物メモ、釣行前メモ、注意事項などを1件ずつ登録できます。</p>
+  <textarea id="newAppMemo" placeholder="メモ内容"></textarea>
+  <button id="createMemoBtn" class="memo-save">メモを新規保存</button>
+</section>
+
+
+<section class="section">
+  <h3>保存ID / バックアップ</h3>
+  <p class="small">この保存IDごとにデータを分けて保存します。IDをメモ帳などに控えると、別端末でも同じデータに戻せます。</p>
+  <label>あなたの保存ID</label>
+  <input id="userIdDisplay" readonly>
+  <button id="copyUserIdBtn">保存IDをコピー</button>
+  <button id="changeUserIdBtn">保存IDを入力して復元</button>
+  <button id="migrateSharedDataBtn">旧共有データをこのIDへ移行</button>
+  <button id="csvBackupBtn">CSVでバックアップ</button>
+  <button id="csvRestoreBtn">CSVから復元</button>
+  <input id="csvRestoreInput" type="file" accept=".csv,text/csv" style="display:none;">
+</section>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCJJ_w-vBaBw53bzQVjP_ds6P4nxUz97BQ",
+  authDomain: "line-manager-5bec3.firebaseapp.com",
+  projectId: "line-manager-5bec3",
+  storageBucket: "line-manager-5bec3.firebasestorage.app",
+  messagingSenderId: "278359562354",
+  appId: "1:278359562354:web:b873faf23cf102406b8aeb"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.firestore();
+db.settings({
+  experimentalForceLongPolling: true,
+  useFetchStreams: false
+});
+
+let reels = [];
+let lineStocks = [];
+let lineMemos = [];
+let currentUserId = getOrCreateUserId();
+let selectedReelId = null;
+let selectedStockId = null;
+let selectedMemoId = null;
+let sortTargetId = null;
+let longPressTimer = null;
+let longPressTriggered = false;
+let normalizedOnce = false;
+
+const today = new Date().toISOString().slice(0, 10);
+
+const statusEl = document.getElementById("status");
+const summaryEl = document.getElementById("summary");
+const stockSummaryEl = document.getElementById("stockSummary");
+const reelDetailEl = document.getElementById("reelDetail");
+const stockDetailEl = document.getElementById("stockDetail");
+const memoSummaryEl = document.getElementById("memoSummary");
+const memoDetailEl = document.getElementById("memoDetail");
+const newAppMemoEl = document.getElementById("newAppMemo");
+
+const newSpareSpoolCountEl = document.getElementById("newSpareSpoolCount");
+const newSpare1FieldsEl = document.getElementById("newSpare1Fields");
+const newSpare2FieldsEl = document.getElementById("newSpare2Fields");
+
+document.getElementById("csvBackupBtn").addEventListener("click", exportCsv);
+copyUserIdBtn.addEventListener("click", copyUserId);
+changeUserIdBtn.addEventListener("click", changeUserId);
+migrateSharedDataBtn.addEventListener("click", migrateSharedDataToCurrentId);
+csvRestoreBtn.addEventListener("click", () => csvRestoreInput.click());
+csvRestoreInput.addEventListener("change", restoreCsvFromFile);
+document.getElementById("createMemoBtn").addEventListener("click", createLineMemo);
+document.getElementById("createReelBtn").addEventListener("click", createReel);
+document.getElementById("createStockBtn").addEventListener("click", createLineStock);
+newSpareSpoolCountEl.addEventListener("change", updateNewSpareFieldsVisibility);
+
+
+userIdDisplayEl.value = currentUserId;
+
+function generateUserId() {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function getOrCreateUserId() {
+  const key = "reelManagerUserId";
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = generateUserId();
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+function setCurrentUserId(id) {
+  currentUserId = String(id || "").trim();
+  localStorage.setItem("reelManagerUserId", currentUserId);
+  userIdDisplayEl.value = currentUserId;
+}
+
+function userRoot() {
+  return db.collection("users").doc(currentUserId);
+}
+
+function reelsRef() {
+  return userRoot().collection("reels");
+}
+
+function lineStocksRef() {
+  return userRoot().collection("lineStocks");
+}
+
+function lineMemosRef() {
+  return userRoot().collection("lineMemos");
+}
+
+async function copyUserId() {
+  try {
+    await navigator.clipboard.writeText(currentUserId);
+    setStatus("保存IDをコピーしました");
+  } catch (e) {
+    prompt("この保存IDをコピーしてください", currentUserId);
+  }
+}
+
+async function changeUserId() {
+  const id = prompt("復元したい保存IDを入力してください", currentUserId);
+  if (!id) return;
+
+  setCurrentUserId(id);
+  selectedReelId = null;
+  selectedStockId = null;
+  selectedMemoId = null;
+  normalizedOnce = false;
+  setStatus("保存IDを切り替えました");
+  await load();
+}
+
+setInitialDates();
+
+function setInitialDates() {
+  const ids = [
+    "newSpooledAt", "newUsedAt",
+    "newSpare1SpooledAt", "newSpare1UsedAt",
+    "newSpare2SpooledAt", "newSpare2UsedAt"
+  ];
+
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = today;
+  });
+}
+
+function setStatus(text) {
+  statusEl.innerText = text;
+}
+
+function updateNewSpareFieldsVisibility() {
+  const count = Number(newSpareSpoolCountEl.value || 0);
+  newSpare1FieldsEl.style.display = count >= 1 ? "block" : "none";
+  newSpare2FieldsEl.style.display = count >= 2 ? "block" : "none";
+}
+
+function updateDetailSpareFieldsVisibility() {
+  const countEl = document.getElementById("detailSpareSpoolCount");
+  if (!countEl) return;
+
+  const count = Number(countEl.value || 0);
+  const spare1 = document.getElementById("detailSpare1Fields");
+  const spare2 = document.getElementById("detailSpare2Fields");
+
+  if (spare1) spare1.style.display = count >= 1 ? "block" : "none";
+  if (spare2) spare2.style.display = count >= 2 ? "block" : "none";
+}
+
+function getSpareCountFromData(d) {
+  if (typeof d.spareSpoolCount === "number") return d.spareSpoolCount;
+  if (d.hasSpareSpool) return 1;
+  return 0;
+}
+
+function getOrderValue(item) {
+  return typeof item.order === "number" ? item.order : 9999999999999;
+}
+
+function getTimeValue(value) {
+  if (!value) return 0;
+  if (value.toMillis) return value.toMillis();
+  if (value.toDate) return value.toDate().getTime();
+  return 0;
+}
+
+function sortReelsStable() {
+  reels.sort((a, b) => {
+    const orderDiff = getOrderValue(a) - getOrderValue(b);
+    if (orderDiff !== 0) return orderDiff;
+
+    const aTime = getTimeValue(a.createdAt) || 0;
+    const bTime = getTimeValue(b.createdAt) || 0;
+    if (aTime !== bTime) return aTime - bTime;
+
+    return String(a.id).localeCompare(String(b.id));
+  });
+}
+
+function needsNormalize() {
+  const seen = new Set();
+
+  for (const reel of reels) {
+    if (typeof reel.order !== "number") return true;
+    if (seen.has(reel.order)) return true;
+    seen.add(reel.order);
+  }
+
+  return false;
+}
+
+async function normalizeOrderIfNeeded() {
+  if (normalizedOnce) return;
+
+  sortReelsStable();
+
+  if (!needsNormalize()) {
+    normalizedOnce = true;
+    return;
+  }
+
+  setStatus("並び順を整理中...");
+  await saveOrder();
+  normalizedOnce = true;
+  setStatus("並び順を整理しました");
+}
+
+async function load() {
+  try {
+    setStatus("読み込み中...");
+
+    const snapshot = await reelsRef().get();
+
+    reels = [];
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      reels.push({ id: doc.id, ...migrateLegacySpoolData(data) });
+    });
+
+    sortReelsStable();
+    await normalizeOrderIfNeeded();
+    sortReelsStable();
+
+    await loadLineStocks();
+    await loadLineMemos();
+
+    if (selectedReelId && !reels.find(r => r.id === selectedReelId)) selectedReelId = null;
+    if (selectedStockId && !lineStocks.find(s => s.id === selectedStockId)) selectedStockId = null;
+    if (selectedMemoId && !lineMemos.find(m => m.id === selectedMemoId)) selectedMemoId = null;
+
+    renderAll();
+
+    setStatus("読み込み完了");
+
+  } catch (e) {
+    setStatus("読み込みエラー：" + e.message);
+    console.error(e);
+  }
+}
+
+function migrateLegacySpoolData(d) {
+  const copy = { ...d };
+
+  if (copy.spareSpoolCount === undefined) {
+    copy.spareSpoolCount = copy.hasSpareSpool ? 1 : 0;
+  }
+
+  if (copy.spareSpoolCount >= 1 && !copy.spare1LineSize && copy.spareLineSize) {
+    copy.spare1SpoolSize = copy.spare1SpoolSize || "";
+    copy.spare1LineSize = copy.spareLineSize || "";
+    copy.spare1LineLength = copy.spareLineLength || "";
+    copy.spare1SpooledAt = copy.spareSpooledAt || "";
+    copy.spare1UsedAt = copy.spareUsedAt || "";
+    copy.spare1UsageCount = Number(copy.spareUsageCount || 0);
+  }
+
+  return copy;
+}
+
+function renderAll() {
+  renderSummary();
+  renderStockSummary();
+  renderMemoSummary();
+  renderReelDetail();
+  renderStockDetail();
+  renderMemoDetail();
+}
+
+function renderSummary() {
+  summaryEl.innerHTML = `
+    <div class="summary-row header">
+      <div class="summary-cell">種</div>
+      <div class="summary-cell">リール</div>
+      <div class="summary-cell center">号</div>
+      <div class="summary-cell">長さ</div>
+      <div class="summary-cell">巻替日</div>
+      <div class="summary-cell flag-cell">替</div>
+      <div class="summary-cell memo-mark">メモ</div>
+    </div>
+  `;
+
+  if (reels.length === 0) {
+    summaryEl.innerHTML += `<div class="empty-box">まだリール登録がありません。</div>`;
+    return;
+  }
+
+  reels.forEach((d, index) => {
+    const hasMemo = d.memo && d.memo.trim().length > 0;
+    const isActive = sortTargetId === d.id;
+    const type = d.reelType || "OT";
+    const spareCount = getSpareCountFromData(d);
+
+    if (isActive) {
+      summaryEl.innerHTML += `
+        <div class="summary-row sorting"
+          data-id="${d.id}"
+          ontouchstart="startLongPress('${d.id}')"
+          ontouchend="cancelLongPress()"
+          ontouchmove="cancelLongPress()"
+          onmousedown="startLongPress('${d.id}')"
+          onmouseup="cancelLongPress()"
+          onmouseleave="cancelLongPress()"
+        >
+          <div class="summary-cell sort-name">
+            <span class="type-badge type-${type}">${type}</span>
+            ${escapeHtml(d.name || "-")}
+          </div>
+          <button class="sort-btn" onclick="moveReel('${d.id}', -1)" ${index === 0 ? "disabled" : ""}>↑</button>
+          <button class="sort-btn" onclick="moveReel('${d.id}', 1)" ${index === reels.length - 1 ? "disabled" : ""}>↓</button>
+        </div>
+      `;
+      return;
+    }
+
+    summaryEl.innerHTML += `
+      <div class="summary-row item"
+        data-id="${d.id}"
+        ontouchstart="startLongPress('${d.id}')"
+        ontouchend="cancelLongPress()"
+        ontouchmove="cancelLongPress()"
+        onmousedown="startLongPress('${d.id}')"
+        onmouseup="cancelLongPress()"
+        onmouseleave="cancelLongPress()"
+      >
+        <div class="summary-cell"><span class="type-badge type-${type}">${type}</span></div>
+        <div class="summary-cell reel-name-cell">
+          <span class="summary-link" onclick="selectReel('${d.id}')">${escapeHtml(d.name || "-")}</span>
+        </div>
+        <div class="summary-cell center">${escapeHtml(d.lineSize || "-")}</div>
+        <div class="summary-cell">${escapeHtml(d.lineLength || "-")}</div>
+        <div class="summary-cell">${escapeHtml(formatShortDate(d.spooledAt))}</div>
+        <div class="summary-cell flag-cell">${spareCount > 0 ? "有" : "-"}</div>
+        <div class="summary-cell memo-mark">${hasMemo ? "有" : "-"}</div>
+      </div>
+    `;
+  });
+}
+
+function renderStockSummary() {
+  stockSummaryEl.innerHTML = `
+    <div class="stock-summary-row header">
+      <div>商品名</div>
+      <div class="center">号</div>
+      <div class="center">長さ</div>
+      <div class="center">個数</div>
+    </div>
+  `;
+
+  if (lineStocks.length === 0) {
+    stockSummaryEl.innerHTML += `<div class="empty-box">まだラインストック登録がありません。</div>`;
+    return;
+  }
+
+  lineStocks.forEach(s => {
+    stockSummaryEl.innerHTML += `
+      <div class="stock-summary-row" onclick="selectLineStock('${s.id}')">
+        <div class="summary-cell">${escapeHtml(s.name || "-")}</div>
+        <div class="center">${escapeHtml(s.size || "-")}</div>
+        <div class="center">${escapeHtml(s.length || "-")}</div>
+        <div class="center">${Number(s.quantity || 0)}</div>
+      </div>
+    `;
+  });
+}
+
+function selectReel(id) {
+  if (longPressTriggered) {
+    longPressTriggered = false;
+    return;
+  }
+
+  if (sortTargetId === id) return;
+
+  selectedReelId = id;
+  renderReelDetail();
+
+  document.querySelector(".section-detail").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function selectLineStock(id) {
+  selectedStockId = id;
+  renderStockDetail();
+
+  document.querySelector(".section-stock-detail").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+
+function renderMemoSummary() {
+  memoSummaryEl.innerHTML = `
+    <div class="memo-summary-row header">
+      <div>メモ</div>
+      <div class="memo-date">更新日</div>
+    </div>
+  `;
+
+  if (lineMemos.length === 0) {
+    memoSummaryEl.innerHTML += `<div class="empty-box">まだメモ登録がありません。</div>`;
+    return;
+  }
+
+  lineMemos.forEach(m => {
+    memoSummaryEl.innerHTML += `
+      <div class="memo-summary-row" onclick="selectLineMemo('${m.id}')">
+        <div class="summary-cell memo-title-link">${escapeHtml(getMemoTitle(m.text || ""))}</div>
+        <div class="memo-date">${escapeHtml(formatMemoDate(m.updatedAt || m.createdAt))}</div>
+      </div>
+    `;
+  });
+}
+
+function selectLineMemo(id) {
+  selectedMemoId = id;
+  renderMemoDetail();
+
+  document.querySelector(".section-memo").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function renderMemoDetail() {
+  const m = lineMemos.find(x => x.id === selectedMemoId);
+
+  if (!m) {
+    memoDetailEl.innerHTML = `<div class="empty-box">一覧からメモを選択すると詳細と編集フォームが表示されます。</div>`;
+    return;
+  }
+
+  memoDetailEl.innerHTML = `
+    <div class="detail-box">
+      <textarea id="detailMemoText" placeholder="メモ内容">${escapeHtml(m.text || "")}</textarea>
+      <div class="row">
+        <button class="editBtn" onclick="saveSelectedLineMemo()">編集内容を保存</button>
+        <button class="deleteBtn" onclick="deleteLineMemo('${m.id}')">削除</button>
+      </div>
+    </div>
+  `;
+}
+
+
+function renderReelDetail() {
+  const d = reels.find(x => x.id === selectedReelId);
+
+  if (!d) {
+    reelDetailEl.innerHTML = `<div class="empty-box">一覧からリールを選択すると詳細と編集フォームが表示されます。</div>`;
+    return;
+  }
+
+  const type = d.reelType || "OT";
+  const spareCount = getSpareCountFromData(d);
+
+  reelDetailEl.innerHTML = `
+    <div class="detail-box">
+      <div class="title">
+        <span class="type-badge type-${type}">${type}</span>
+        ${escapeHtml(d.name || "")}
+      </div>
+
+      <input id="detailName" placeholder="リール名" value="${escapeAttr(d.name || "")}">
+
+      <label>リール種類</label>
+      <select id="detailReelType">
+        ${typeOption("EL", "電動 / EL", type)}
+        ${typeOption("BC", "両軸 / BC", type)}
+        ${typeOption("SP", "スピニング / SP", type)}
+        ${typeOption("OT", "その他 / OT", type)}
+      </select>
+
+      <h4>メインスプール</h4>
+      <input id="detailMainSpoolSize" placeholder="メインスプールサイズ" value="${escapeAttr(d.mainSpoolSize || "")}">
+      <input id="detailLineSize" type="number" step="0.1" placeholder="糸の太さ" value="${escapeAttr(d.lineSize || "")}">
+      <input id="detailLineLength" type="number" placeholder="長さ" value="${escapeAttr(d.lineLength || "")}">
+
+      <label>巻き替え日</label>
+      <input id="detailSpooledAt" type="date" value="${escapeAttr(d.spooledAt || today)}">
+
+      <label>最終利用日</label>
+      <input id="detailUsedAt" type="date" value="${escapeAttr(d.usedAt || today)}">
+
+      <label>使用回数</label>
+      <input id="detailUsageCount" type="number" min="0" value="${Number(d.usageCount || 0)}">
+
+      <label>替えスプール数</label>
+      <select id="detailSpareSpoolCount" onchange="updateDetailSpareFieldsVisibility()">
+        <option value="0" ${spareCount === 0 ? "selected" : ""}>替えスプールなし</option>
+        <option value="1" ${spareCount === 1 ? "selected" : ""}>替えスプール1つ</option>
+        <option value="2" ${spareCount === 2 ? "selected" : ""}>替えスプール2つ</option>
+      </select>
+
+      <div id="detailSpare1Fields" class="sub-section" style="display:${spareCount >= 1 ? "block" : "none"};">
+        <h4>替えスプール①</h4>
+        <input id="detailSpare1SpoolSize" placeholder="替えスプール①サイズ" value="${escapeAttr(d.spare1SpoolSize || "")}">
+        <input id="detailSpare1LineSize" type="number" step="0.1" placeholder="替えスプール①の糸の太さ" value="${escapeAttr(d.spare1LineSize || d.spareLineSize || "")}">
+        <input id="detailSpare1LineLength" type="number" placeholder="替えスプール①の長さ" value="${escapeAttr(d.spare1LineLength || d.spareLineLength || "")}">
+
+        <label>替えスプール①巻き替え日</label>
+        <input id="detailSpare1SpooledAt" type="date" value="${escapeAttr(d.spare1SpooledAt || d.spareSpooledAt || today)}">
+
+        <label>替えスプール①最終利用日</label>
+        <input id="detailSpare1UsedAt" type="date" value="${escapeAttr(d.spare1UsedAt || d.spareUsedAt || today)}">
+
+        <label>替えスプール①使用回数</label>
+        <input id="detailSpare1UsageCount" type="number" min="0" value="${Number(d.spare1UsageCount ?? d.spareUsageCount ?? 0)}">
+      </div>
+
+      <div id="detailSpare2Fields" class="sub-section" style="display:${spareCount >= 2 ? "block" : "none"};">
+        <h4>替えスプール②</h4>
+        <input id="detailSpare2SpoolSize" placeholder="替えスプール②サイズ" value="${escapeAttr(d.spare2SpoolSize || "")}">
+        <input id="detailSpare2LineSize" type="number" step="0.1" placeholder="替えスプール②の糸の太さ" value="${escapeAttr(d.spare2LineSize || "")}">
+        <input id="detailSpare2LineLength" type="number" placeholder="替えスプール②の長さ" value="${escapeAttr(d.spare2LineLength || "")}">
+
+        <label>替えスプール②巻き替え日</label>
+        <input id="detailSpare2SpooledAt" type="date" value="${escapeAttr(d.spare2SpooledAt || today)}">
+
+        <label>替えスプール②最終利用日</label>
+        <input id="detailSpare2UsedAt" type="date" value="${escapeAttr(d.spare2UsedAt || today)}">
+
+        <label>替えスプール②使用回数</label>
+        <input id="detailSpare2UsageCount" type="number" min="0" value="${Number(d.spare2UsageCount || 0)}">
+      </div>
+
+      <textarea id="detailMemo" placeholder="メモ">${escapeHtml(d.memo || "")}</textarea>
+
+      <div class="row">
+        <button class="useBtn" onclick="addUsage('${d.id}', 'main', ${Number(d.usageCount || 0)})">メイン＋1回</button>
+        ${spareCount >= 1 ? `<button class="useBtn" onclick="addUsage('${d.id}', 'spare1', ${Number(d.spare1UsageCount || 0)})">替①＋1回</button>` : ""}
+      </div>
+
+      ${spareCount >= 2 ? `
+        <div class="row">
+          <button class="useBtn" onclick="addUsage('${d.id}', 'spare2', ${Number(d.spare2UsageCount || 0)})">替②＋1回</button>
+        </div>
+      ` : ""}
+
+      <div class="row">
+        <button class="editBtn" onclick="saveSelectedReel()">編集内容を保存</button>
+        <button class="deleteBtn" onclick="deleteReel('${d.id}')">削除</button>
+      </div>
+    </div>
+  `;
+}
+
+function typeOption(value, label, current) {
+  return `<option value="${value}" ${value === current ? "selected" : ""}>${label}</option>`;
+}
+
+async function saveSelectedReel() {
+  try {
+    if (!selectedReelId) return;
+
+    setStatus("リール更新中...");
+
+    const spareCount = Number(document.getElementById("detailSpareSpoolCount").value || 0);
+
+    const data = {
+      name: document.getElementById("detailName").value.trim(),
+      reelType: document.getElementById("detailReelType").value,
+
+      mainSpoolSize: document.getElementById("detailMainSpoolSize").value,
+      lineSize: document.getElementById("detailLineSize").value,
+      lineLength: document.getElementById("detailLineLength").value,
+      spooledAt: document.getElementById("detailSpooledAt").value,
+      usedAt: document.getElementById("detailUsedAt").value,
+      usageCount: Number(document.getElementById("detailUsageCount").value || 0),
+
+      spareSpoolCount: spareCount,
+      hasSpareSpool: spareCount > 0,
+
+      spare1SpoolSize: spareCount >= 1 ? document.getElementById("detailSpare1SpoolSize").value : "",
+      spare1LineSize: spareCount >= 1 ? document.getElementById("detailSpare1LineSize").value : "",
+      spare1LineLength: spareCount >= 1 ? document.getElementById("detailSpare1LineLength").value : "",
+      spare1SpooledAt: spareCount >= 1 ? document.getElementById("detailSpare1SpooledAt").value : "",
+      spare1UsedAt: spareCount >= 1 ? document.getElementById("detailSpare1UsedAt").value : "",
+      spare1UsageCount: spareCount >= 1 ? Number(document.getElementById("detailSpare1UsageCount").value || 0) : 0,
+
+      spare2SpoolSize: spareCount >= 2 ? document.getElementById("detailSpare2SpoolSize").value : "",
+      spare2LineSize: spareCount >= 2 ? document.getElementById("detailSpare2LineSize").value : "",
+      spare2LineLength: spareCount >= 2 ? document.getElementById("detailSpare2LineLength").value : "",
+      spare2SpooledAt: spareCount >= 2 ? document.getElementById("detailSpare2SpooledAt").value : "",
+      spare2UsedAt: spareCount >= 2 ? document.getElementById("detailSpare2UsedAt").value : "",
+      spare2UsageCount: spareCount >= 2 ? Number(document.getElementById("detailSpare2UsageCount").value || 0) : 0,
+
+      memo: document.getElementById("detailMemo").value,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!data.name) {
+      setStatus("リール名を入力してください");
+      return;
+    }
+
+    await reelsRef().doc(selectedReelId).update(data);
+    setStatus("リールを更新しました");
+    await load();
+
+  } catch (e) {
+    setStatus("リール更新エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+function collectNewReelData() {
+  const spareCount = Number(document.getElementById("newSpareSpoolCount").value || 0);
+
+  return {
+    name: document.getElementById("newName").value.trim(),
+    reelType: document.getElementById("newReelType").value,
+
+    mainSpoolSize: document.getElementById("newMainSpoolSize").value,
+    lineSize: document.getElementById("newLineSize").value,
+    lineLength: document.getElementById("newLineLength").value,
+    spooledAt: document.getElementById("newSpooledAt").value,
+    usedAt: document.getElementById("newUsedAt").value,
+    usageCount: Number(document.getElementById("newUsageCount").value || 0),
+
+    spareSpoolCount: spareCount,
+    hasSpareSpool: spareCount > 0,
+
+    spare1SpoolSize: spareCount >= 1 ? document.getElementById("newSpare1SpoolSize").value : "",
+    spare1LineSize: spareCount >= 1 ? document.getElementById("newSpare1LineSize").value : "",
+    spare1LineLength: spareCount >= 1 ? document.getElementById("newSpare1LineLength").value : "",
+    spare1SpooledAt: spareCount >= 1 ? document.getElementById("newSpare1SpooledAt").value : "",
+    spare1UsedAt: spareCount >= 1 ? document.getElementById("newSpare1UsedAt").value : "",
+    spare1UsageCount: spareCount >= 1 ? Number(document.getElementById("newSpare1UsageCount").value || 0) : 0,
+
+    spare2SpoolSize: spareCount >= 2 ? document.getElementById("newSpare2SpoolSize").value : "",
+    spare2LineSize: spareCount >= 2 ? document.getElementById("newSpare2LineSize").value : "",
+    spare2LineLength: spareCount >= 2 ? document.getElementById("newSpare2LineLength").value : "",
+    spare2SpooledAt: spareCount >= 2 ? document.getElementById("newSpare2SpooledAt").value : "",
+    spare2UsedAt: spareCount >= 2 ? document.getElementById("newSpare2UsedAt").value : "",
+    spare2UsageCount: spareCount >= 2 ? Number(document.getElementById("newSpare2UsageCount").value || 0) : 0,
+
+    memo: document.getElementById("newMemo").value,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    order: reels.length
+  };
+}
+
+async function createReel() {
+  try {
+    setStatus("リール保存中...");
+
+    const data = collectNewReelData();
+
+    if (!data.name) {
+      setStatus("リール名を入力してください");
+      return;
+    }
+
+    await reelsRef().add(data);
+    setStatus("リールを保存しました");
+
+    clearNewReelForm();
+    await load();
+
+  } catch (e) {
+    setStatus("リール保存エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+function clearNewReelForm() {
+  document.getElementById("newName").value = "";
+  document.getElementById("newReelType").value = "EL";
+  document.getElementById("newMainSpoolSize").value = "";
+  document.getElementById("newLineSize").value = "";
+  document.getElementById("newLineLength").value = "";
+  document.getElementById("newSpooledAt").value = today;
+  document.getElementById("newUsedAt").value = today;
+  document.getElementById("newUsageCount").value = 1;
+  document.getElementById("newSpareSpoolCount").value = "0";
+
+  document.getElementById("newSpare1SpoolSize").value = "";
+  document.getElementById("newSpare1LineSize").value = "";
+  document.getElementById("newSpare1LineLength").value = "";
+  document.getElementById("newSpare1SpooledAt").value = today;
+  document.getElementById("newSpare1UsedAt").value = today;
+  document.getElementById("newSpare1UsageCount").value = 0;
+
+  document.getElementById("newSpare2SpoolSize").value = "";
+  document.getElementById("newSpare2LineSize").value = "";
+  document.getElementById("newSpare2LineLength").value = "";
+  document.getElementById("newSpare2SpooledAt").value = today;
+  document.getElementById("newSpare2UsedAt").value = today;
+  document.getElementById("newSpare2UsageCount").value = 0;
+
+  document.getElementById("newMemo").value = "";
+  updateNewSpareFieldsVisibility();
+}
+
+function startLongPress(id) {
+  longPressTriggered = false;
+
+  longPressTimer = setTimeout(() => {
+    longPressTriggered = true;
+
+    if (sortTargetId === id) {
+      sortTargetId = null;
+      setStatus("並び替え選択を解除しました");
+    } else {
+      sortTargetId = id;
+      setStatus("並び替え対象を選択しました");
+    }
+
+    renderSummary();
+  }, 600);
+}
+
+function cancelLongPress() {
+  clearTimeout(longPressTimer);
+}
+
+async function moveReel(id, direction) {
+  try {
+    const index = reels.findIndex(r => r.id === id);
+    const targetIndex = index + direction;
+
+    if (index < 0 || targetIndex < 0 || targetIndex >= reels.length) return;
+
+    const temp = reels[index];
+    reels[index] = reels[targetIndex];
+    reels[targetIndex] = temp;
+
+    setStatus("並び順を保存中...");
+
+    await saveOrder();
+
+    sortTargetId = id;
+    renderSummary();
+
+    setStatus("並び順を保存しました");
+
+  } catch (e) {
+    setStatus("並び替えエラー：" + e.message);
+    console.error(e);
+  }
+}
+
+async function saveOrder() {
+  const batch = db.batch();
+
+  for (let i = 0; i < reels.length; i++) {
+    reels[i].order = i;
+    const ref = reelsRef().doc(reels[i].id);
+    batch.update(ref, {
+      order: i,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+
+  await batch.commit();
+}
+
+async function addUsage(id, type, count) {
+  try {
+    setStatus("使用回数を更新中...");
+
+    const updateData = {
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (type === "spare1") {
+      updateData.spare1UsageCount = Number(count || 0) + 1;
+      updateData.spare1UsedAt = new Date().toISOString().slice(0, 10);
+    } else if (type === "spare2") {
+      updateData.spare2UsageCount = Number(count || 0) + 1;
+      updateData.spare2UsedAt = new Date().toISOString().slice(0, 10);
+    } else {
+      updateData.usageCount = Number(count || 0) + 1;
+      updateData.usedAt = new Date().toISOString().slice(0, 10);
+    }
+
+    await reelsRef().doc(id).update(updateData);
+
+    setStatus("使用回数を更新しました");
+    await load();
+
+  } catch (e) {
+    setStatus("使用回数更新エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+async function deleteReel(id) {
+  try {
+    if (!confirm("このリールを丸ごと削除しますか？")) return;
+
+    setStatus("削除中...");
+    await reelsRef().doc(id).delete();
+
+    if (selectedReelId === id) selectedReelId = null;
+
+    setStatus("削除しました");
+    await load();
+
+  } catch (e) {
+    setStatus("削除エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+async function loadLineStocks() {
+  const snapshot = await lineStocksRef().get();
+
+  lineStocks = [];
+  snapshot.forEach(doc => {
+    lineStocks.push({ id: doc.id, ...doc.data() });
+  });
+
+  lineStocks.sort((a, b) => {
+    const aTime = getTimeValue(a.createdAt) || 0;
+    const bTime = getTimeValue(b.createdAt) || 0;
+    return aTime - bTime;
+  });
+}
+
+function renderStockDetail() {
+  const s = lineStocks.find(x => x.id === selectedStockId);
+
+  if (!s) {
+    stockDetailEl.innerHTML = `<div class="empty-box">一覧からラインストックを選択すると詳細と編集フォームが表示されます。</div>`;
+    return;
+  }
+
+  stockDetailEl.innerHTML = `
+    <div class="detail-box">
+      <input id="detailStockName" placeholder="メーカー・商品名" value="${escapeAttr(s.name || "")}">
+      <input id="detailStockSize" type="number" step="0.1" placeholder="号数" value="${escapeAttr(s.size || "")}">
+      <input id="detailStockLength" type="number" placeholder="長さ" value="${escapeAttr(s.length || "")}">
+      <input id="detailStockQuantity" type="number" min="0" placeholder="個数" value="${Number(s.quantity || 0)}">
+      <textarea id="detailStockMemo" placeholder="ストックメモ">${escapeHtml(s.memo || "")}</textarea>
+
+      <div class="row">
+        <button class="editBtn" onclick="saveSelectedLineStock()">編集内容を保存</button>
+        <button class="deleteBtn" onclick="deleteLineStock('${s.id}')">削除</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveSelectedLineStock() {
+  try {
+    if (!selectedStockId) return;
+
+    setStatus("ストック更新中...");
+
+    const data = {
+      name: document.getElementById("detailStockName").value.trim(),
+      size: document.getElementById("detailStockSize").value,
+      length: document.getElementById("detailStockLength").value,
+      quantity: Number(document.getElementById("detailStockQuantity").value || 0),
+      memo: document.getElementById("detailStockMemo").value,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!data.name) {
+      setStatus("ストックの商品名を入力してください");
+      return;
+    }
+
+    await lineStocksRef().doc(selectedStockId).update(data);
+    setStatus("ストックを更新しました");
+    await load();
+
+  } catch (e) {
+    setStatus("ストック更新エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+async function createLineStock() {
+  try {
+    setStatus("ストック保存中...");
+
+    const data = {
+      name: document.getElementById("newStockName").value.trim(),
+      size: document.getElementById("newStockSize").value,
+      length: document.getElementById("newStockLength").value,
+      quantity: Number(document.getElementById("newStockQuantity").value || 0),
+      memo: document.getElementById("newStockMemo").value,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!data.name) {
+      setStatus("ストックの商品名を入力してください");
+      return;
+    }
+
+    await lineStocksRef().add(data);
+    setStatus("ストックを保存しました");
+
+    clearNewStockForm();
+    await load();
+
+  } catch (e) {
+    setStatus("ストック保存エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+function clearNewStockForm() {
+  document.getElementById("newStockName").value = "";
+  document.getElementById("newStockSize").value = "";
+  document.getElementById("newStockLength").value = "";
+  document.getElementById("newStockQuantity").value = 1;
+  document.getElementById("newStockMemo").value = "";
+}
+
+async function deleteLineStock(id) {
+  try {
+    if (!confirm("このラインストックを削除しますか？")) return;
+
+    setStatus("ストック削除中...");
+    await lineStocksRef().doc(id).delete();
+
+    if (selectedStockId === id) selectedStockId = null;
+
+    setStatus("ストックを削除しました");
+    await load();
+
+  } catch (e) {
+    setStatus("ストック削除エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+
+async function loadLineMemos() {
+  const snapshot = await lineMemosRef().get();
+
+  lineMemos = [];
+  snapshot.forEach(doc => {
+    lineMemos.push({ id: doc.id, ...doc.data() });
+  });
+
+  lineMemos.sort((a, b) => {
+    const bTime = getTimeValue(b.updatedAt) || getTimeValue(b.createdAt) || 0;
+    const aTime = getTimeValue(a.updatedAt) || getTimeValue(a.createdAt) || 0;
+    return bTime - aTime;
+  });
+
+  // 旧共有メモは自動移行せず、必要な場合だけ「旧共有データをこのIDへ移行」ボタンで移行します。
+}
+
+async function migrateLegacyAppMemoToLineMemo() {
+  const legacyDoc = await db.collection("appMeta").doc("memo").get();
+  if (!legacyDoc.exists) return;
+
+  const text = legacyDoc.data().text || "";
+  if (!text.trim()) return;
+
+  const alreadyMigrated = localStorage.getItem("legacyMemoMigrated") === "true";
+  if (alreadyMigrated) return;
+
+  const data = {
+    text,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  await lineMemosRef().add(data);
+  localStorage.setItem("legacyMemoMigrated", "true");
+
+  const snapshot = await lineMemosRef().get();
+  lineMemos = [];
+  snapshot.forEach(doc => {
+    lineMemos.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function createLineMemo() {
+  try {
+    setStatus("メモ保存中...");
+
+    const text = newAppMemoEl.value.trim();
+
+    if (!text) {
+      setStatus("メモ内容を入力してください");
+      return;
+    }
+
+    await lineMemosRef().add({
+      text,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    newAppMemoEl.value = "";
+    setStatus("メモを保存しました");
+    await load();
+
+  } catch (e) {
+    setStatus("メモ保存エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+async function saveSelectedLineMemo() {
+  try {
+    if (!selectedMemoId) return;
+
+    const text = document.getElementById("detailMemoText").value.trim();
+
+    if (!text) {
+      setStatus("メモ内容を入力してください");
+      return;
+    }
+
+    setStatus("メモ更新中...");
+
+    await lineMemosRef().doc(selectedMemoId).update({
+      text,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    setStatus("メモを更新しました");
+    await load();
+
+  } catch (e) {
+    setStatus("メモ更新エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+async function deleteLineMemo(id) {
+  try {
+    if (!confirm("このメモを削除しますか？")) return;
+
+    setStatus("メモ削除中...");
+    await lineMemosRef().doc(id).delete();
+
+    if (selectedMemoId === id) selectedMemoId = null;
+
+    setStatus("メモを削除しました");
+    await load();
+
+  } catch (e) {
+    setStatus("メモ削除エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+
+async function migrateSharedDataToCurrentId() {
+  try {
+    if (!confirm("旧共有データを現在の保存IDへコピーします。既存データは削除せず、追加・上書きします。実行しますか？")) return;
+
+    setStatus("旧共有データを移行中...");
+
+    const batch = db.batch();
+    let count = 0;
+
+    const reelSnapshot = await db.collection("reels").get();
+    reelSnapshot.forEach(doc => {
+      batch.set(reelsRef().doc(doc.id), doc.data(), { merge: true });
+      count++;
+    });
+
+    const stockSnapshot = await db.collection("lineStocks").get();
+    stockSnapshot.forEach(doc => {
+      batch.set(lineStocksRef().doc(doc.id), doc.data(), { merge: true });
+      count++;
+    });
+
+    const memoSnapshot = await db.collection("lineMemos").get();
+    memoSnapshot.forEach(doc => {
+      batch.set(lineMemosRef().doc(doc.id), doc.data(), { merge: true });
+      count++;
+    });
+
+    const legacyMemo = await db.collection("appMeta").doc("memo").get();
+    if (legacyMemo.exists && (legacyMemo.data().text || "").trim()) {
+      const ref = lineMemosRef().doc("legacy-app-memo");
+      batch.set(ref, {
+        text: legacyMemo.data().text || "",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      count++;
+    }
+
+    if (count === 0) {
+      setStatus("移行できる旧共有データはありませんでした");
+      return;
+    }
+
+    await batch.commit();
+    normalizedOnce = false;
+    setStatus("旧共有データを移行しました");
+    await load();
+
+  } catch (e) {
+    setStatus("旧共有データ移行エラー：" + e.message);
+    console.error(e);
+  }
+}
+
+function restoreCsvFromFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      await restoreCsv(String(e.target.result || ""));
+    } catch (err) {
+      setStatus("CSV復元エラー：" + err.message);
+      console.error(err);
+    } finally {
+      csvRestoreInput.value = "";
+    }
+  };
+  reader.readAsText(file, "UTF-8");
+}
+
+async function restoreCsv(text) {
+  if (!confirm("CSVの内容を現在の保存IDへ追加復元します。既存データは削除しません。実行しますか？")) return;
+
+  setStatus("CSVから復元中...");
+
+  const rows = parseCsv(text).filter(row => row.some(v => String(v || "").trim() !== ""));
+  if (rows.length === 0) {
+    setStatus("CSVに復元できるデータがありません");
+    return;
+  }
+
+  const stockIndex = rows.findIndex(row => row[0] === "ラインストック");
+  const memoIndex = rows.findIndex(row => row[0] === "メモ" || row[0] === "全体メモ");
+
+  const reelRows = rows.slice(0, stockIndex >= 0 ? stockIndex : (memoIndex >= 0 ? memoIndex : rows.length));
+  const stockRows = stockIndex >= 0 ? rows.slice(stockIndex + 1, memoIndex >= 0 ? memoIndex : rows.length) : [];
+  const memoRows = memoIndex >= 0 ? rows.slice(memoIndex + 1) : [];
+
+  let restored = 0;
+
+  restored += await restoreReelsFromRows(reelRows);
+  restored += await restoreStocksFromRows(stockRows);
+  restored += await restoreMemosFromRows(memoRows);
+
+  if (restored === 0) {
+    setStatus("CSVに復元できるデータがありませんでした");
+    return;
+  }
+
+  normalizedOnce = false;
+  setStatus("CSVから復元しました");
+  await load();
+}
+
+async function restoreReelsFromRows(rows) {
+  if (rows.length < 2) return 0;
+
+  const headers = rows[0];
+  if (!headers.includes("リール名")) return 0;
+
+  let count = 0;
+  const baseOrder = reels.length;
+
+  for (let i = 1; i < rows.length; i++) {
+    const obj = rowToObject(headers, rows[i]);
+    if (!(obj["リール名"] || "").trim()) continue;
+
+    const data = {
+      name: obj["リール名"] || "",
+      reelType: obj["種類"] || "OT",
+      mainSpoolSize: obj["メインスプールサイズ"] || "",
+      lineSize: obj["メイン号数"] || "",
+      lineLength: obj["メイン長さ"] || "",
+      spooledAt: obj["メイン巻替日"] || "",
+      usedAt: obj["メイン最終利用日"] || "",
+      usageCount: Number(obj["メイン使用回数"] || 0),
+      spareSpoolCount: Number(obj["替スプール数"] || 0),
+      hasSpareSpool: Number(obj["替スプール数"] || 0) > 0,
+      spare1SpoolSize: obj["替1スプールサイズ"] || "",
+      spare1LineSize: obj["替1号数"] || "",
+      spare1LineLength: obj["替1長さ"] || "",
+      spare1SpooledAt: obj["替1巻替日"] || "",
+      spare1UsedAt: obj["替1最終利用日"] || "",
+      spare1UsageCount: Number(obj["替1使用回数"] || 0),
+      spare2SpoolSize: obj["替2スプールサイズ"] || "",
+      spare2LineSize: obj["替2号数"] || "",
+      spare2LineLength: obj["替2長さ"] || "",
+      spare2SpooledAt: obj["替2巻替日"] || "",
+      spare2UsedAt: obj["替2最終利用日"] || "",
+      spare2UsageCount: Number(obj["替2使用回数"] || 0),
+      memo: obj["メモ"] || "",
+      order: baseOrder + count,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    await reelsRef().add(data);
+    count++;
+  }
+
+  return count;
+}
+
+async function restoreStocksFromRows(rows) {
+  if (rows.length < 2) return 0;
+
+  const headers = rows[0];
+  if (!headers.includes("商品名")) return 0;
+
+  let count = 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    const obj = rowToObject(headers, rows[i]);
+    if (!(obj["商品名"] || "").trim()) continue;
+
+    await lineStocksRef().add({
+      name: obj["商品名"] || "",
+      size: obj["号数"] || "",
+      length: obj["長さ"] || "",
+      quantity: Number(obj["個数"] || 0),
+      memo: obj["メモ"] || "",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    count++;
+  }
+
+  return count;
+}
+
+async function restoreMemosFromRows(rows) {
+  if (rows.length === 0) return 0;
+
+  let count = 0;
+  const headers = rows[0];
+
+  if (headers.includes("メモ全文")) {
+    for (let i = 1; i < rows.length; i++) {
+      const obj = rowToObject(headers, rows[i]);
+      const text = obj["メモ全文"] || obj["メモ"] || "";
+      if (!text.trim()) continue;
+      await lineMemosRef().add({
+        text,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      count++;
+    }
+    return count;
+  }
+
+  const joined = rows.map(row => row.join(",")).join("\n").trim();
+  if (joined) {
+    await lineMemosRef().add({
+      text: joined,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    count++;
+  }
+
+  return count;
+}
+
+function rowToObject(headers, row) {
+  const obj = {};
+  headers.forEach((h, i) => {
+    obj[h] = row[i] || "";
+  });
+  return obj;
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let value = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    const next = text[i + 1];
+
+    if (c === '"') {
+      if (inQuotes && next === '"') {
+        value += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (c === "," && !inQuotes) {
+      row.push(value);
+      value = "";
+      continue;
+    }
+
+    if ((c === "\n" || c === "\r") && !inQuotes) {
+      if (c === "\r" && next === "\n") i++;
+      row.push(value);
+      rows.push(row);
+      row = [];
+      value = "";
+      continue;
+    }
+
+    value += c;
+  }
+
+  row.push(value);
+  rows.push(row);
+
+  return rows;
+}
+
+function exportCsv() {
+  try {
+    if (!reels || reels.length === 0) {
+      setStatus("バックアップ対象のデータがありません");
+      return;
+    }
+
+    const headers = [
+      "リール名","種類",
+      "メインスプールサイズ","メイン号数","メイン長さ","メイン巻替日","メイン最終利用日","メイン使用回数",
+      "替スプール数",
+      "替1スプールサイズ","替1号数","替1長さ","替1巻替日","替1最終利用日","替1使用回数",
+      "替2スプールサイズ","替2号数","替2長さ","替2巻替日","替2最終利用日","替2使用回数",
+      "メモ"
+    ];
+
+    const rows = reels.map(r => [
+      r.name || "", r.reelType || "",
+      r.mainSpoolSize || "", r.lineSize || "", r.lineLength || "", r.spooledAt || "", r.usedAt || "", r.usageCount ?? "",
+      getSpareCountFromData(r),
+      r.spare1SpoolSize || "", r.spare1LineSize || r.spareLineSize || "", r.spare1LineLength || r.spareLineLength || "", r.spare1SpooledAt || r.spareSpooledAt || "", r.spare1UsedAt || r.spareUsedAt || "", r.spare1UsageCount ?? r.spareUsageCount ?? "",
+      r.spare2SpoolSize || "", r.spare2LineSize || "", r.spare2LineLength || "", r.spare2SpooledAt || "", r.spare2UsedAt || "", r.spare2UsageCount ?? "",
+      r.memo || ""
+    ]);
+
+    const stockHeaders = ["商品名","号数","長さ","個数","メモ"];
+    const stockRows = lineStocks.map(s => [
+      s.name || "", s.size || "", s.length || "", s.quantity ?? "", s.memo || ""
+    ]);
+
+    const csvMain = [headers, ...rows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const csvStock = [stockHeaders, ...stockRows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const memoHeaders = ["メモ書き出し","メモ全文"];
+    const memoRows = lineMemos.map(m => [
+      getMemoTitle(m.text || ""), m.text || ""
+    ]);
+
+    const csvMemo = [memoHeaders, ...memoRows]
+      .map(row => row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const csv = csvMain + "\n\nラインストック\n" + csvStock + "\n\nメモ\n" + csvMemo;
+
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const date = new Date().toISOString().slice(0, 10);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `reel-backup-${date}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+    setStatus("CSVバックアップを出力しました");
+  } catch (e) {
+    setStatus("CSV出力エラー：" + e.message);
+  }
+}
+
+
+function getMemoTitle(text) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "無題メモ";
+
+  let result = "";
+  let width = 0;
+
+  for (const ch of clean) {
+    const w = ch.match(/[ -~]/) ? 1 : 2;
+    if (width + w > 20) break;
+    result += ch;
+    width += w;
+  }
+
+  return result;
+}
+
+function formatMemoDate(value) {
+  const time = getTimeValue(value);
+  if (!time) return "-";
+
+  const d = new Date(time);
+  const year = String(d.getFullYear()).slice(2);
+  return `${d.getMonth() + 1}/${d.getDate()}/${year}`;
+}
+
+
+function formatShortDate(dateStr) {
+  if (!dateStr) return "-";
+
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) return dateStr;
+
+  const year = parts[0].slice(2);
+  const month = Number(parts[1]);
+  const day = Number(parts[2]);
+
+  return month + "/" + day + "/" + year;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>'"]/g, function(c) {
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;"
+    }[c];
+  });
+}
+
+function escapeAttr(str) {
+  return escapeHtml(str).replace(/"/g, "&quot;");
+}
+
+window.selectReel = selectReel;
+window.selectLineStock = selectLineStock;
+window.startLongPress = startLongPress;
+window.cancelLongPress = cancelLongPress;
+window.moveReel = moveReel;
+window.addUsage = addUsage;
+window.deleteReel = deleteReel;
+window.saveSelectedReel = saveSelectedReel;
+window.updateDetailSpareFieldsVisibility = updateDetailSpareFieldsVisibility;
+window.saveSelectedLineStock = saveSelectedLineStock;
+window.deleteLineStock = deleteLineStock;
+window.selectLineMemo = selectLineMemo;
+window.saveSelectedLineMemo = saveSelectedLineMemo;
+window.deleteLineMemo = deleteLineMemo;
+
+updateNewSpareFieldsVisibility();
+load();
+</script>
+
+</body>
+</html>
